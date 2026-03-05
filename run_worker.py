@@ -2,15 +2,8 @@
 import sys
 import os
 
-# ==========================================
-# 终极杀招：强行把当前 V2.0 目录设为系统最高优先级！
-# 任何代码的导入，都必须从这里找，彻底切断与 V1.0 的联系
-# ==========================================
 current_dir = os.path.abspath(os.path.dirname(__file__))
 sys.path.insert(0, current_dir)
-
-# 强行剔除可能存在的旧路径
-# sys.path = [p for p in sys.path if p != '/home/aipolish']
 
 import backend.worker_engine as w
 
