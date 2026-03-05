@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>系统管理后台 - 极速润色</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .admin-layout { display: flex; gap: 20px; margin-bottom: 30px; }
+        .sidebar { width: 300px; background: var(--panel-bg); padding: 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .main-content { flex: 1; background: var(--panel-bg); padding: 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 14px; }
+        th, td { padding: 12px; border-bottom: 1px solid var(--border-color); text-align: left; }
+        th { background-color: #f8fafc; font-weight: 600; }
+        .form-group { margin-bottom: 15px; }
+        .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 6px; }
+        .badge { padding: 4px 8px; border-radius: 12px; font-size: 12px; background: #e2e8f0; }
+        .badge.admin { background: #fee2e2; color: #991b1b; }
+        .badge.user { background: #dbeafe; color: #1e40af; }
+        .api-select-inline { padding: 4px; border-radius: 4px; border: 1px solid var(--border-color); width: 100%; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div id="admin-login-container" class="container">
+        <h2>系统管理后台</h2>
+        <div class="form-group">
+            <input type="text" id="admin-username" placeholder="管理员账号">
+        </div>
+        <div class="form-group">
+            <input type="password" id="admin-password" placeholder="管理密码">
+        </div>
+        <button id="admin-login-btn">登录后台</button>
+        <div id="admin-login-msg" class="msg" style="margin-top: 10px; color: red;"></div>
+    </div>
+
+    <div id="admin-dashboard" class="container hidden">
+        <div class="header">
+            <h2>管理控制台 <span style="font-size: 14px; color: gray; font-weight: normal;">(负载均衡管理)</span></h2>
+            <button id="admin-logout-btn" class="text-btn">退出登录</button>
+        </div>
+        
+        <div class="admin-layout">
+            <div class="sidebar">
+                <h3>+ 新增 API 线路</h3>
+                <div class="form-group" style="margin-top: 15px;">
+                    <input type="text" id="new-api-name" placeholder="线路名称">
+                </div>
+                <div class="form-group">
+                    <input type="text" id="new-api-key" placeholder="API Key">
+                </div>
+                <div class="form-group">
+                    <input type="text" id="new-api-url" placeholder="Base URL">
+                </div>
+                <div class="form-group">
+                    <input type="text" id="new-api-model" placeholder="模型名称">
+                </div>
+                <button id="add-api-btn">保存新线路</button>
+            </div>
+            
+            <div class="main-content">
+                <h3>API 线路池</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>线路名称</th>
+                            <th>模型</th>
+                            <th>Base URL</th>
+                            <th>操作</th> </tr>
+                        </tr>
+                    </thead>
+                    <tbody id="api-table-body"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="admin-layout">
+            <div class="sidebar">
+                <h3>+ 新增用户/卡密</h3>
+                <div class="form-group" style="margin-top: 15px;">
+                    <input type="text" id="new-username" placeholder="输入用户名">
+                </div>
+                <div class="form-group">
+                    <select id="new-role">
+                        <option value="user">普通用户 (免密)</option>
+                        <option value="admin">管理员 (需密码)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <select id="new-user-api-config">
+                        <option value="">(加载线路中...)</option>
+                    </select>
+                </div>
+                <div class="form-group" id="pwd-group">
+                    <input type="password" id="new-password" placeholder="设置管理员密码">
+                </div>
+                <button id="add-user-btn">创建并分配</button>
+            </div>
+            
+            <div class="main-content">
+                <h3>用户列表</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>用户名</th>
+                            <th>角色</th>
+                            <th style="width: 180px;">分配线路 (可直接修改)</th>
+                            <th>累计耗费</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="user-table-body"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/admin.js"></script>
+</body>
+</html>
