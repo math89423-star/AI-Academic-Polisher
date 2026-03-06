@@ -47,7 +47,7 @@
 
 ### 2. 获取代码与安装依赖
 ```bash
-git clone [https://github.com/你的用户名/你的仓库名.git](https://github.com/你的用户名/你的仓库名.git)
+git clone https://github.com/math89423-star/AIpolish.git
 cd 你的仓库名
 
 # 创建并激活虚拟环境
