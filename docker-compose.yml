@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  aipolish-app:
+    # 告诉 Compose 根据当前目录的 Dockerfile 自动构建镜像
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: aipolish
+    restart: always  # 崩溃或服务器重启时自动拉起
+    ports:
+      - "8020:8020"  # 与 start_docker.bash 中的 Gunicorn 端口保持一致
+    env_file:
+      - .env         # 自动将 .env 文件中的变量注入到容器中
+    volumes:
+      # 挂载业务动态目录，防止容器更新或销毁时丢失用户上传的文档和生成的润色结果
+      - ./uploads:/app/uploads
+      - ./outputs:/app/outputs
+
+      # - ./logs:/app/logs

@@ -41,23 +41,41 @@ def remove_thinking_tags(text: str) -> str:
 
 
 def get_prompt_by_mode(mode: str, strategy_key: str = 'standard') -> str:
-    # 动态获取策略，如果找不到则回退到 standard
+    from backend.prompts_config import STRATEGIES 
     strategy = STRATEGIES.get(strategy_key) or STRATEGIES.get('standard') or {}
     
-    fallback_prompt = "你是一个专业的学术润色系统，请直接输出润色后的正文，不要任何寒暄。"
-    prompt_key = "en_prompt" if mode == 'en' else "zh_prompt"
+    # 兜底提示词也做严格的多语言区分
+    fallback_prompt = "You are a professional academic polishing system. Output polished text directly without greetings." if mode == 'en' else "你是一个专业的学术润色系统，请直接输出润色后的正文，不要任何寒暄。"
     
-    return strategy.get(prompt_key, fallback_prompt)
+    prompt_key = "en_prompt" if mode == 'en' else "zh_prompt"
+    prompt = strategy.get(prompt_key, fallback_prompt)
+    
+    if isinstance(prompt, list):
+        return "\n".join(prompt)
+        
+    return prompt
+
 
 def pure_ai_generator(text: str, api_key: str, base_url: str, model_name: str, mode: str = 'zh', strategy: str = 'standard', history_text: str = None):
+    from openai import OpenAI
     client = OpenAI(api_key=api_key, base_url=base_url)
+    
+    # 动态切换 User 角色对话外壳，彻底切断中文幻觉触发源
+    if mode == 'en':
+        user_content = f"Original text:\n{text}"
+        continue_prompt = "Due to task interruption, please continue polishing the remaining original text from where you left off. Note: Output the polished text directly, DO NOT repeat the parts already output, and NO greetings or explanations."
+    else:
+        user_content = f"原文：\n{text}"
+        continue_prompt = "由于刚才任务中断，请紧接上文，继续润色剩余的原文。注意：直接输出接下来的润色正文，绝对不要重复刚才已经输出过的部分，也不要任何寒暄解释。"
+
     messages = [
         {"role": "system", "content": get_prompt_by_mode(mode, strategy)},
-        {"role": "user", "content": f"原文：\n{text}"}
+        {"role": "user", "content": user_content}
     ]
+    
     if history_text:
         messages.append({"role": "assistant", "content": history_text})
-        messages.append({"role": "user", "content": "由于刚才任务中断，请紧接上文，继续润色剩余的原文。注意：直接输出接下来的润色正文，绝对不要重复刚才已经输出过的部分，也不要任何寒暄解释。"})
+        messages.append({"role": "user", "content": continue_prompt})
 
     stream = client.chat.completions.create(model=model_name, messages=messages, temperature=0.7, stream=True)
     for chunk in stream:
@@ -65,11 +83,18 @@ def pure_ai_generator(text: str, api_key: str, base_url: str, model_name: str, m
             yield chunk.choices[0].delta.content
 
 def sync_ai_request(text: str, api_key: str, base_url: str, model_name: str, mode: str = 'zh', strategy: str = 'standard', max_retries=4) -> str:
+    from openai import OpenAI
+    import time
     client = OpenAI(api_key=api_key, base_url=base_url)
+    
+    # Word 任务并发处理时，同样确保 User 内容无任何中文干扰
+    user_content = f"Original text:\n{text}" if mode == 'en' else f"原文：\n{text}"
+    
     messages = [
         {"role": "system", "content": get_prompt_by_mode(mode, strategy)},
-        {"role": "user", "content": text}
+        {"role": "user", "content": user_content}
     ]
+    
     for attempt in range(max_retries):
         try:
             response = client.chat.completions.create(model=model_name, messages=messages, temperature=0.7, stream=False)
