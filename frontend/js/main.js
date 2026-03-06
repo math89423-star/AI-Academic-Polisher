@@ -12,7 +12,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const statusBox = document.getElementById('status-box');
     const serverMsg = document.getElementById('server-msg');
     
-    // 🟢 新增：Word 面板元素
     const docxInfoBox = document.getElementById('docx-info-box');
     const docxFilename = document.getElementById('docx-filename');
     
@@ -23,9 +22,42 @@ document.addEventListener('DOMContentLoaded', () => {
     const docxFileInput = document.getElementById('docx-file-input');
     const downloadResultBtn = document.getElementById('download-result-btn');
 
+    // 🟢 策略动态加载逻辑
+    const strategyContainer = document.getElementById('strategy-container');
+    async function loadStrategies() {
+        try {
+            const res = await fetch('/api/tasks/strategies');
+            if (!res.ok) throw new Error("获取策略失败");
+            const strategies = await res.json();
+            
+            strategyContainer.innerHTML = ''; 
+            
+            strategies.forEach((st, index) => {
+                const label = document.createElement('label');
+                label.style.marginRight = '15px';
+                label.style.cursor = 'pointer';
+                if (st.color) label.style.color = st.color;
+                
+                const input = document.createElement('input');
+                input.type = 'radio';
+                input.name = 'strategy';
+                input.value = st.id;
+                // 默认选中第一个
+                if (index === 0) input.checked = true;
+                
+                label.appendChild(input);
+                label.appendChild(document.createTextNode(' ' + st.name));
+                strategyContainer.appendChild(label);
+            });
+        } catch (err) {
+            strategyContainer.innerHTML = '<span style="color: red;">策略库加载失败，请刷新重试</span>';
+        }
+    }
+
     if (currentUsername) {
         showWorkContainer();
         loadHistory();
+        loadStrategies(); // 初始化加载策略库
     }
 
     document.getElementById('login-btn').addEventListener('click', async () => {
@@ -43,7 +75,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 currentUsername = username;
                 showWorkContainer();
                 loadHistory(); 
-            } else { loginMsg.innerText = "验证失败"; }
+                loadStrategies(); // 初始化加载策略库
+            } else {
+                const data = await res.json();
+                loginMsg.innerText = data.error || "验证失败"; 
+            }
         } catch (err) { loginMsg.innerText = '无法连接服务器'; }
     });
 
@@ -64,7 +100,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 taskCache[t.id] = {
                     id: t.id, time: t.created_at, original: t.original_text,
                     polished: t.polished_text, status: t.status, serverInfo: '',
-                    task_type: t.task_type || 'text', // 🟢 记录类型
+                    task_type: t.task_type || 'text', 
                     downloadUrl: t.download_url || '',
                     title: t.title
                 };
@@ -86,9 +122,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if(['completed', 'done'].includes(t.status)) statusIcon = '✅';
             if(['failed', 'cancelled'].includes(t.status)) statusIcon = '❌';
 
-            // 列表图标区分
             const typeIcon = t.task_type === 'docx' ? '📄' : '📝';
-            const preview = t.task_type === 'docx' ? t.title : (t.original.substring(0, 10) + '...');
+            const preview = t.task_type === 'docx' ? t.title : (t.original ? t.original.substring(0, 10) + '...' : '新任务');
 
             div.innerHTML = `<div class="history-time"><span>${t.time}</span> <span>${statusIcon}</span></div><div class="history-preview">${typeIcon} ${preview}</div>`;
             div.onclick = () => switchTask(id);
@@ -96,12 +131,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 🟢 核心修复：根据 task_type 智能切换 UI 面板
     function switchTask(id) {
         currentViewingId = id;
         
         if (!id) {
-            // 新建任务模式：显示文本框，显示所有上传按钮
             originalText.classList.remove('hidden');
             docxInfoBox.classList.add('hidden');
             originalText.value = ''; polishedText.value = '';
@@ -118,14 +151,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const t = taskCache[id];
         
-        // 🟢 面板物理隔离逻辑
         if (t.task_type === 'docx') {
             originalText.classList.add('hidden');
             docxInfoBox.classList.remove('hidden');
-            docxInfoBox.style.display = 'flex'; // 强制 flex 布局生效
+            docxInfoBox.style.display = 'flex'; 
             docxFilename.innerText = t.title || "Word文档";
             
-            polishBtn.classList.add('hidden'); // 绝不让用户在 Word 模式点纯文本提交
+            polishBtn.classList.add('hidden'); 
             uploadDocxBtn.classList.add('hidden');
         } else {
             originalText.classList.remove('hidden');
@@ -170,17 +202,23 @@ document.addEventListener('DOMContentLoaded', () => {
         return `${y}-${m}-${d} ${h}:${min}:${s}`;
     }
 
-    // 纯文本提交
+    // 🟢 纯文本提交时追加策略参数
     polishBtn.onclick = async () => {
         const text = originalText.value.trim();
-        const mode = document.querySelector('input[name="mode"]:checked').value;
+        const modeInput = document.querySelector('input[name="mode"]:checked');
+        const mode = modeInput ? modeInput.value : 'zh';
+        
+        // 获取动态渲染出的选中策略
+        const strategyInput = document.querySelector('input[name="strategy"]:checked');
+        const strategy = strategyInput ? strategyInput.value : 'standard';
+
         if (!text) return;
         polishBtn.disabled = true;
 
         try {
             const res = await fetch('/api/tasks/create', {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username: currentUsername, text: text, mode: mode })
+                body: JSON.stringify({ username: currentUsername, text: text, mode: mode, strategy: strategy }) 
             });
             const data = await res.json();
             if (res.ok) {
@@ -190,12 +228,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 };
                 switchTask(data.task_id);
                 startStreaming(data.task_id);
-                polishBtn.disabled = false; 
+            } else {
+                alert(data.error || "创建任务失败");
             }
-        } catch (err) {}
+        } catch (err) {
+            alert("网络错误，请稍后重试");
+        } finally {
+            polishBtn.disabled = false; 
+        }
     };
 
-    // 🟢 Word 文档提交
+    // 🟢 Word 上传提交时追加策略参数
     if (uploadDocxBtn && docxFileInput) {
         uploadDocxBtn.onclick = () => docxFileInput.click();
 
@@ -203,11 +246,18 @@ document.addEventListener('DOMContentLoaded', () => {
             const file = e.target.files[0];
             if (!file) return;
 
-            const mode = document.querySelector('input[name="mode"]:checked').value;
+            const modeInput = document.querySelector('input[name="mode"]:checked');
+            const mode = modeInput ? modeInput.value : 'zh';
+            
+            // 获取动态渲染出的选中策略
+            const strategyInput = document.querySelector('input[name="strategy"]:checked');
+            const strategy = strategyInput ? strategyInput.value : 'standard';
+
             const formData = new FormData();
             formData.append('file', file);
             formData.append('username', currentUsername);
             formData.append('mode', mode);
+            formData.append('strategy', strategy); // 追加策略参数到表单
 
             uploadDocxBtn.disabled = true;
             uploadDocxBtn.innerText = "上传中...";
@@ -222,7 +272,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     taskCache[data.task_id] = {
                         id: data.task_id, time: getFormattedTime(), original: "", title: file.name,
                         polished: "", status: 'queued', serverInfo: '正在排队解析文档...', downloadUrl: '',
-                        task_type: 'docx' // 🟢 明确打上标记
+                        task_type: 'docx' 
                     };
                     switchTask(data.task_id);
                     startStreaming(data.task_id);

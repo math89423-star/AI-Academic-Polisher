@@ -39,6 +39,9 @@ class Task(db.Model):
     mode = db.Column(db.String(10), default='zh')
     status = db.Column(db.String(20), default='pending')
     
+    # 保存用户选择的策略配置（如 'standard', 'strict'）
+    strategy = db.Column(db.String(50), default='standard')
+    
     # 🟢 补全缺失的字段，否则上传会直接报错
     task_type = db.Column(db.String(20), default='text') # 'text' 或 'docx'
     file_path = db.Column(db.String(255), nullable=True) 

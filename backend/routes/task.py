@@ -13,7 +13,7 @@ task_bp = Blueprint('task', __name__)
 @task_bp.route('/create', methods=['POST'])
 def create_task():
     data = request.json
-    username = data.get('username', '').strip() # 这里原先叫 card_key
+    username = data.get('username', '').strip() 
     original_text = data.get('text', '').strip()
     mode = data.get('mode', 'zh').strip()
 
@@ -80,7 +80,7 @@ def get_history():
             "original_text": t.original_text,
             "polished_text": t.polished_text or "",
             "status": t.status,
-            "task_type": getattr(t, 'task_type', 'text'), # 🟢 告诉前端这是什么类型的任务
+            "task_type": getattr(t, 'task_type', 'text'), # 告诉前端这是什么类型的任务
             "download_url": f"/api/tasks/download/{t.id}" if getattr(t, 'task_type', 'text') == 'docx' and t.status == 'completed' else "",
             "created_at": t.created_at.strftime("%Y-%m-%d %H:%M:%S") if t.created_at else ""
         })
@@ -184,3 +184,21 @@ def cancel_task(task_id):
     redis_client.publish(channel_name, f"data: {payload}\n\n")
     
     return jsonify({"message": "指令已发送"}), 200
+
+
+@task_bp.route('/strategies', methods=['GET'])
+def get_strategies():
+    from backend.prompts_config import STRATEGIES  # 引入配置
+    
+    result = []
+    for key, value in STRATEGIES.items():
+        result.append({
+            "id": key,
+            "name": value.get("name", key),
+            "color": value.get("color", "#334155")
+        })
+        
+    # 为了保证界面显示的稳定性，强制让 standard 排在第一位
+    result.sort(key=lambda x: 0 if x['id'] == 'standard' else 1)
+    
+    return jsonify(result), 200

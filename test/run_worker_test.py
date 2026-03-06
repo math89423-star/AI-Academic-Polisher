@@ -2,6 +2,7 @@
 import sys
 import os
 
+
 current_dir = os.path.abspath(os.path.dirname(__file__))
 sys.path.insert(0, current_dir)
 
@@ -18,7 +19,6 @@ else:
     print("✅ 路径正确！幽灵已被彻底隔离，引擎已就绪！")
 print("="*60 + "\n")
 
-# 🟢 修复点：直接导入 Worker 和 Redis 即可
 from redis import Redis
 from rq import Worker
 from backend.config import Config

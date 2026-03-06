@@ -46,7 +46,7 @@ def process_task(task_id):
 
         try:
             # ==========================================
-            # 🟢 分支 1：处理纯文本任务 (融合流式与并发引擎)
+            # 分支 1：处理纯文本任务 (融合流式与并发引擎)
             # ==========================================
             if task.task_type == 'text' or not getattr(task, 'task_type', None):
                 print("📝 [Worker] 判定结果：进入【纯文本】处理分支")
@@ -125,7 +125,7 @@ def process_task(task_id):
                                 try:
                                     _, polished_chunk = future.result()
                                     done_dict[idx] = polished_chunk
-                                    # 🟢 乱序写入：每完成一段，立刻安全锁入 Redis！
+                                    # 乱序写入：每完成一段，立刻安全锁入 Redis！
                                     redis_client.hset(progress_key, str(idx), polished_chunk)
                                     completed_count += 1
                                     
@@ -155,7 +155,7 @@ def process_task(task_id):
                     redis_client.delete(progress_key)
 
             # ==========================================
-            # 🟢 分支 2：DOCX 文档任务 (工业级多线程并发模式)
+            # 分支 2：DOCX 文档任务
             # ==========================================
             elif task.task_type == 'docx':
                 print("📄 [Worker] 判定结果：进入【Word文档-高并发】解析分支")
@@ -193,7 +193,7 @@ def process_task(task_id):
                     _publish_message(channel_name, "block", f"📄 解析成功！共提取 {total_paras} 个核心段落待处理。\n🚀 【多线程并发引擎】已激活，正在满载提速...\n\n")
                     
                     def process_single_para(para_idx, text_content):
-                        # 🟢 终极防护：如果遇到长达千字不按回车的“毒瘤段落”，进行段内再切片
+                        # 终极防护：如果遇到长达千字不按回车的“毒瘤段落”，进行段内再切片
                         if len(text_content) > 600:
                             sub_chunks = split_text_into_chunks(text_content, max_chars=600)
                             polished_sub = []

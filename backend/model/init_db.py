@@ -72,8 +72,8 @@ def init_database():
             default_api = ApiConfig(
                 name="全局默认线路",
                 api_key="sk-your-api-key-here",
-                base_url="https://api.openai.com/v1",
-                model_name="gpt-3.5-turbo"
+                base_url="your-api-base-url-here",
+                model_name="your-default-model-here"
             )
             db.session.add(default_api)
             print("✅ 成功创建默认 API 渠道")
