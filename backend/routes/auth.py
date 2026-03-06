@@ -11,15 +11,14 @@ def user_login():
     data = request.json
     username = data.get('username', '').strip()
     
-    if not username: return jsonify({"error": "用户名不能为空"}), 400
+    if not username: 
+        return jsonify({"error": "用户名不能为空"}), 400
 
     user = User.query.filter_by(username=username, role='user').first()
     
-    # 如果系统设计为公开使用，可以保留自动注册逻辑；如果是封闭系统，这里可以改为直接返回 401 报错
+    # 如果数据库里没有这个用户，直接返回 401 未授权错误，不再自动创建。
     if not user:
-        user = User(username=username, role='user')
-        db.session.add(user)
-        db.session.commit()
+        return jsonify({"error": "该账号未注册，请联系管理员分配"}), 401
 
     if not user.is_active:
         return jsonify({"error": "该账户已被管理员封禁"}), 403
@@ -35,13 +34,9 @@ def admin_login():
     
     if not username or not password:
         return jsonify({"error": "用户名和密码不能为空"}), 400
-
-    user = User.query.filter_by(username=username, role='admin').first()
-    
-    if not user or not user.check_password(password):
+        
+    admin = User.query.filter_by(username=username, role='admin').first()
+    if not admin or not admin.check_password(password):
         return jsonify({"error": "管理员账号或密码错误"}), 401
-
-    if not user.is_active:
-        return jsonify({"error": "该管理员账户已被停用"}), 403
-
-    return jsonify({"message": "管理员登录成功", "username": user.username}), 200
+        
+    return jsonify({"message": "管理员登录成功", "username": admin.username}), 200

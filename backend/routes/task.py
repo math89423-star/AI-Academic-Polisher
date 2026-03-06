@@ -47,7 +47,7 @@ def stream_results(task_id):
         pubsub.subscribe(channel_name)
         
         try:
-            # 🟢 修复 SyntaxError: 将 json.dumps 提取到变量中，避开 f-string 的反斜杠限制
+            # 将 json.dumps 提取到变量中，避开 f-string 的反斜杠限制
             import json
             initial_payload = json.dumps({'type': 'block', 'content': '⏳ 已连接到推送通道，等待 AI 响应...\n\n'})
             yield f"data: {initial_payload}\n\n"
@@ -80,7 +80,7 @@ def get_history():
             "original_text": t.original_text,
             "polished_text": t.polished_text or "",
             "status": t.status,
-            "task_type": getattr(t, 'task_type', 'text'), # 🟢 告诉前端这是什么类型的任务
+            "task_type": getattr(t, 'task_type', 'text'), # 告诉前端这是什么类型的任务
             "download_url": f"/api/tasks/download/{t.id}" if getattr(t, 'task_type', 'text') == 'docx' and t.status == 'completed' else "",
             "created_at": t.created_at.strftime("%Y-%m-%d %H:%M:%S") if t.created_at else ""
         })
@@ -144,7 +144,7 @@ def upload_docx():
     return jsonify({"task_id": task.id, "title": task.title}), 201
 
 
-# 🟢 新增：下载润色后的文档
+# 下载润色后的文档
 @task_bp.route('/download/<int:task_id>', methods=['GET'])
 def download_docx(task_id):
     task = Task.query.get(task_id)

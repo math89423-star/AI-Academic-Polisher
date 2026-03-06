@@ -48,7 +48,7 @@ fi
 # 2. 启动 Web 服务端 (基于 Gunicorn/Gthread)
 # ==========================================
 echo "🌐 正在启动高并发 Web 服务 (多线程模式)..."
-# 🟢 核心修复 1：放弃 gevent，改为多线程 gthread 模型！
+
 # 4 个进程，每个进程 50 个线程 = 完美支持 200 个并发长连接，且绝生死锁！
 gunicorn -k gthread -w 4 --threads 50 -b 0.0.0.0:8020 "main:app" > web_access.log 2> web_error.log &
 WEB_PID=$!
@@ -68,7 +68,6 @@ for i in $(seq 1 $WORKER_COUNT)
 do
     echo "🛠️  正在启动第 $i 个 Worker..." 
     python run_worker.py > /dev/null 2>&1 &
-    # 🟢 核心修复 2：错峰启动！每个进程间隔 0.5 秒，防止瞬间压垮服务器 CPU 和内存
     sleep 0.5 
 done
 

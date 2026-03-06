@@ -143,9 +143,7 @@ textarea, .result-box {
 .status-badge.success { background: #dcfce3; color: #166534; }
 .status-badge.error { background: #fee2e2; color: #991b1b; }
 
-/* =========================================
-   新增：多任务会话流布局与历史记录边栏
-========================================= */
+
 .app-layout { 
     display: flex; 
     height: 85vh; 
@@ -196,7 +194,7 @@ textarea, .result-box {
 .main-workspace { flex: 1; display: flex; flex-direction: column; }
 .server-msg { color: #8b5cf6; font-size: 13px; margin-left: 10px; font-weight: normal; }
 
-/* 按钮组与终止按钮 */
+
 .button-group { display: flex; align-items: center; margin-top: 15px; gap: 10px; }
 .button-group .primary-btn { margin-top: 0; flex: 1; }
 .danger-btn { 

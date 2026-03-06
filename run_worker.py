@@ -15,7 +15,7 @@ else:
     print("✅ 路径正确！幽灵已被彻底隔离，引擎已就绪！")
 print("="*60 + "\n")
 
-# 🟢 修复点：直接导入 Worker 和 Redis 即可
+# 直接导入 Worker 和 Redis 即可
 from redis import Redis
 from rq import Worker
 from backend.config import Config
@@ -26,6 +26,6 @@ if __name__ == '__main__':
     
     print("🤖 AI Worker 已启动，正在监听 ai_tasks 队列...")
     
-    # 🟢 修复点：直接把连接作为参数传给 Worker，去掉 Connection 上下文
+    # 直接把连接作为参数传给 Worker，去掉 Connection 上下文
     worker = Worker(['ai_tasks'], connection=redis_conn)
     worker.work()

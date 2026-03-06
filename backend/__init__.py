@@ -33,7 +33,7 @@ def create_app(config_class=Config):
         from backend.routes.task import task_bp
         from backend.routes.admin import admin_bp
         
-        # 🟢 修复：剔除了已废弃的 SystemConfig，补上了 Task
+        # 剔除了已废弃的 SystemConfig，补上了 Task
         from backend.model.models import User, Task, ApiConfig
 
         # 注册路由前缀

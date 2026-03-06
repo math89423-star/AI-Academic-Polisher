@@ -46,7 +46,7 @@ def delete_api_config(config_id):
     if ApiConfig.query.count() <= 1:
         return jsonify({"error": "系统必须至少保留一条可用线路！"}), 400
 
-    # 🟢 级联保护：找出所有绑定了这条线路的用户，将其退回“未分配”状态
+    # 级联保护：找出所有绑定了这条线路的用户，将其退回“未分配”状态
     users_using_this = User.query.filter_by(api_config_id=config_id).all()
     for u in users_using_this:
         u.api_config_id = None
@@ -79,7 +79,7 @@ def add_user():
     new_user = User(
         username=new_username, 
         role=data.get('role', 'user'),
-        api_config_id=data.get('api_config_id') # [核心] 分配指定的 API 渠道
+        api_config_id=data.get('api_config_id') # 分配指定的 API 渠道
     )
     if new_user.role == 'admin' and data.get('password'):
         new_user.set_password(data.get('password'))

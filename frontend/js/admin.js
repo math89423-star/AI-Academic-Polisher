@@ -82,7 +82,7 @@ document.addEventListener('DOMContentLoaded', () => {
             select.appendChild(opt);
         });
 
-        // 🟢 绑定：删除线路事件
+        // 删除线路事件
         document.querySelectorAll('.delete-api-btn').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 const targetId = e.currentTarget.getAttribute('data-id');
