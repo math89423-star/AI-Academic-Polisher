@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const statusBox = document.getElementById('status-box');
     const serverMsg = document.getElementById('server-msg');
     
-    // Word 面板元素
+    // 🟢 新增：Word 面板元素
     const docxInfoBox = document.getElementById('docx-info-box');
     const docxFilename = document.getElementById('docx-filename');
     
@@ -64,7 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 taskCache[t.id] = {
                     id: t.id, time: t.created_at, original: t.original_text,
                     polished: t.polished_text, status: t.status, serverInfo: '',
-                    task_type: t.task_type || 'text', 
+                    task_type: t.task_type || 'text', // 🟢 记录类型
                     downloadUrl: t.download_url || '',
                     title: t.title
                 };
@@ -96,7 +96,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 根据 task_type 智能切换 UI 面板
+    // 🟢 核心修复：根据 task_type 智能切换 UI 面板
     function switchTask(id) {
         currentViewingId = id;
         
@@ -118,7 +118,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const t = taskCache[id];
         
-        // 面板物理隔离逻辑
+        // 🟢 面板物理隔离逻辑
         if (t.task_type === 'docx') {
             originalText.classList.add('hidden');
             docxInfoBox.classList.remove('hidden');
@@ -222,7 +222,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     taskCache[data.task_id] = {
                         id: data.task_id, time: getFormattedTime(), original: "", title: file.name,
                         polished: "", status: 'queued', serverInfo: '正在排队解析文档...', downloadUrl: '',
-                        task_type: 'docx' // 明确打上标记
+                        task_type: 'docx' // 🟢 明确打上标记
                     };
                     switchTask(data.task_id);
                     startStreaming(data.task_id);
