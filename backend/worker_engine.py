@@ -124,6 +124,10 @@ def process_task(task_id):
                                 
                                 try:
                                     _, polished_chunk = future.result()
+                                    if not polished_chunk or len(polished_chunk.strip()) < 5:
+                                        print(f"⚠️ [Worker] 文本片段 {idx} 返回异常空值，已回滚原文保护。")
+                                        polished_chunk = original_chunk
+
                                     done_dict[idx] = polished_chunk
                                     # 乱序写入：每完成一段，立刻安全锁入 Redis！
                                     redis_client.hset(progress_key, str(idx), polished_chunk)
@@ -234,6 +238,9 @@ def process_task(task_id):
                             
                             try:
                                 _, polished_text = future.result()
+                                if not polished_text or len(polished_text.strip()) < 5:
+                                    print(f"⚠️ [Worker] Word段落 {idx} 返回异常空值，已回滚原文保护。")
+                                    polished_text = original_text
                                 results_dict[idx] = polished_text
                                 completed_count += 1
                                 

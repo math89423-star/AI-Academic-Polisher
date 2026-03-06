@@ -2,11 +2,43 @@
 import re
 import time
 from openai import OpenAI
-from backend.prompts_config import STRATEGIES  # 🟢 直接引入 Python 字典
+from backend.prompts_config import STRATEGIES 
 
 def remove_thinking_tags(text: str) -> str:
-    if not text: return text
-    return re.sub(r'<think>.*?</think>', '', text, flags=re.DOTALL | re.IGNORECASE).strip()
+    """终极文本净化器：带防丢段落的安全兜底"""
+    if not text: 
+        return ""
+    
+    # 备份原始文本，防止被误杀干净
+    original_backup = text 
+    
+    # 1. 常规清理：去除 <think> ... </think>
+    text = re.sub(r'<think>.*?</think>', '', text, flags=re.DOTALL | re.IGNORECASE)
+    
+    output_markers = [
+        r'\*\*Final Output Generation\*\*',
+        r'\*\*Final Polish Check:\*\*',
+        r'\*Draft \d+ Polish:\*',
+        r'\(End of Thought Process\)',
+        r'I will now generate the response\.'
+    ]
+    
+    for marker in output_markers:
+        match = re.search(marker, text, flags=re.IGNORECASE)
+        if match:
+            text = text[match.end():]
+            
+    text = re.sub(r'^\s*\*\s*\*Draft.*?:\*\s*', '', text, flags=re.MULTILINE)
+    cleaned_text = text.strip()
+    
+    # 如果在清洗后文本离奇消失（长度极短或为空），
+    # 说明触发了严重误杀，立即回滚到只去除了 <think> 标签的版本！
+    if len(cleaned_text) < 5: 
+        safe_text = re.sub(r'<think>.*?</think>', '', original_backup, flags=re.DOTALL | re.IGNORECASE)
+        return safe_text.strip()
+        
+    return cleaned_text
+
 
 def get_prompt_by_mode(mode: str, strategy_key: str = 'standard') -> str:
     # 动态获取策略，如果找不到则回退到 standard
