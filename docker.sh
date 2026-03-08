@@ -27,7 +27,7 @@ cd "$PROJECT_ROOT"
 export PYTHONPATH=$PYTHONPATH:$PROJECT_ROOT
 
 echo "------------------------------------------"
-echo "🚀 AI 极速学术润色系统 - Docker 生产集群启动中..."
+echo "🚀 AI 极速学术润色系统 - Docker 生产集群内部启动中..."
 echo "------------------------------------------"
 
 if [ -f .env ]; then
@@ -56,7 +56,6 @@ echo "------------------------------------------"
 
 for i in $(seq 1 $WORKER_COUNT)
 do
-    echo "🛠️  正在启动第 $i 个 Worker..." 
     python run_worker.py > /dev/null 2>&1 &
     sleep 0.5 
 done

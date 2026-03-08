@@ -2,19 +2,50 @@ version: '3.8'
 
 services:
   aipolish-app:
-    # 告诉 Compose 根据当前目录的 Dockerfile 自动构建镜像
     build: 
       context: .
       dockerfile: Dockerfile
-    container_name: aipolish
-    restart: always  # 崩溃或服务器重启时自动拉起
+    container_name: aipolish_server
+    restart: always
     ports:
-      - "8020:8020"  # 与 start_docker.bash 中的 Gunicorn 端口保持一致
+      - "8020:8020"
     env_file:
-      - .env         # 自动将 .env 文件中的变量注入到容器中
+      - .env
     volumes:
-      # 挂载业务动态目录，防止容器更新或销毁时丢失用户上传的文档和生成的润色结果
       - ./uploads:/app/uploads
       - ./outputs:/app/outputs
+    depends_on:
+      - mysql
+      - redis  # 让 App 启动前先等待 Redis 启动
 
-      # - ./logs:/app/logs
+  mysql:
+    image: m.daocloud.io/docker.io/library/mysql:8.0
+    container_name: aipolish_mysql
+    restart: always
+    ports:
+      - "3306:3306"
+    env_file:
+      - .env
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
+      TZ: Asia/Shanghai
+    volumes:
+      - ./mysql_data:/var/lib/mysql
+
+  # 将 Redis 纳入集群编排
+  redis:
+    image: redis:7.0-alpine  # 使用 alpine 轻量级镜像
+    container_name: aipolish_redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./redis_data:/data  # 将 Redis 数据持久化到宿主机
+    # 开启 AOF 持久化，确保队列中的任务即使意外重启也不会丢失
+    command: redis-server --appendonly yes
+
+# 声明数据卷
+volumes:
+  mysql_data:
+  redis_data:  # 🟢 声明 Redis 数据卷

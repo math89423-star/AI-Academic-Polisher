@@ -14,7 +14,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # 赋予新脚本执行权限
-RUN chmod +x start_docker.bash
+RUN chmod +x docker.sh
 
 # 指定容器启动时运行新的 Docker 专用脚本
-CMD ["bash", "start_docker.bash"]
+CMD ["bash", "docker.sh"]
