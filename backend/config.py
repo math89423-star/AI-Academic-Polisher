@@ -21,11 +21,12 @@ class Config:
     
     # 高并发数据库连接池配置
     SQLALCHEMY_ENGINE_OPTIONS = {
-        "pool_size": 50,           # 提高核心池
-        "max_overflow": 50,        # 提高溢出池 (总计支撑100并发)
+        "pool_size": 50,           
+        "max_overflow": 50,        
         "pool_recycle": 1800,      
         "pool_pre_ping": True,     
-        "pool_timeout": 30         
+        "pool_timeout": 30,
+        "connect_args": {"charset": "utf8mb4", "collation": "utf8mb4_unicode_ci"}
     }
     # --- AI 全局默认配置 ---
     OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', 'your-api-key')
