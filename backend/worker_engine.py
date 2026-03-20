@@ -5,7 +5,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from backend.extensions import db, redis_client
 from backend import create_app
 from backend.model import Task, User, ApiConfig
-from backend.utils.ai_service import pure_ai_generator, sync_ai_request, clean_ai_text
+from backend.utils.ai_service import pure_ai_generator, sync_ai_request
 from backend.utils.docx_service import is_paragraph_needs_polishing, replace_paragraph_text, check_stop_signal
 from backend.utils.helpers import split_text_into_chunks
 
@@ -41,7 +41,7 @@ def process_task(task_id):
         
         full_text = ""
         doc = None
-        total_chunks = 0  # 确保状态判断安全
+        total_chunks = 0 
 
         try:
             # ==========================================
@@ -52,8 +52,8 @@ def process_task(task_id):
                 total_chunks = len(chunks)
                 
                 if total_chunks <= 1:
-                    # 🔴 核心修复：绝对不发送任何 "progress" 信号，防止短文本前端 JS 找不到进度条而抛出空指针异常崩溃！
-                    _publish_message(channel_name, "block", "AI 正在接管任务，请稍候...\n\n")
+                    # 🟢 新增：由于 Two-Pass 需要后台思考，给用户发送安抚提示！
+                    _publish_message(channel_name, "block", "🧠 系统已启用【二次深度提纯】引擎...\n⏳ AI 正在后台默默进行深度思考与草稿构建（此阶段无输出，约需 10~30 秒，请耐心等待，切勿刷新页面）...\n\n")
                     
                     full_text = task.polished_text or ""
                     generator = pure_ai_generator(
@@ -64,14 +64,14 @@ def process_task(task_id):
                         cancel_key = f"cancel:task:{task_id}"
                         if redis_client.exists(cancel_key):
                             task.status = 'cancelled'
-                            task.polished_text = clean_ai_text(full_text)
+                            task.polished_text = full_text
                             db.session.commit()
                             redis_client.delete(cancel_key)
                             return
                         full_text += chunk
                         _publish_message(channel_name, "stream", chunk)
                     
-                    task.polished_text = clean_ai_text(full_text)
+                    task.polished_text = full_text
                 
                 else:
                     # 2B. 长文本并发处理
@@ -81,7 +81,7 @@ def process_task(task_id):
                     chunks_to_process = [(i, txt) for i, txt in enumerate(chunks) if i not in done_dict]
                     
                     if chunks_to_process:
-                        _publish_message(channel_name, "block", f"📝 长文本智能切片成功！共 {total_chunks} 个片段。\n🚀 【多线程并发引擎】已激活...\n\n")
+                        _publish_message(channel_name, "block", f"📝 长文本切片成功！共 {total_chunks} 个片段。\n🚀 【多线程并发+深度提纯】引擎已激活（首批片段需要静默思考，请稍候）...\n\n")
                         
                         def process_single_chunk(chunk_idx, text_content):
                             res = sync_ai_request(text=text_content, api_key=api_key, base_url=base_url, model_name=model_name, mode=task.mode)
@@ -149,7 +149,7 @@ def process_task(task_id):
                         
                 total_paras = len(paras_to_process)
                 if total_paras > 0:
-                    _publish_message(channel_name, "block", f"📄 解析成功！共提取 {total_paras} 个核心段落待处理。\n🚀 【多线程并发引擎】已激活...\n\n")
+                    _publish_message(channel_name, "block", f"📄 解析成功！共提取 {total_paras} 个核心段落待处理。\n🚀 【多线程+二次提纯引擎】已激活（初始阶段需后台思考，请稍候）...\n\n")
                     
                     def process_single_para(para_idx, text_content):
                         if len(text_content) > 600:
@@ -210,7 +210,6 @@ def process_task(task_id):
             task.status = 'completed'
             db.session.commit()
             
-            # 🔴 关键隔离：只有存在进度条的界面（Word 模式或万字长文本）才发送 100% 进度，短文本禁发！
             is_long_task = (getattr(task, 'task_type', '') == 'docx') or (getattr(task, 'task_type', 'text') == 'text' and total_chunks > 1)
             if is_long_task:
                 _publish_message(channel_name, "progress", 100) 
@@ -226,7 +225,7 @@ def process_task(task_id):
             db.session.rollback()
             task.status = 'failed'
             if getattr(task, 'task_type', 'text') == 'text' and 'full_text' in locals() and full_text: 
-                task.polished_text = clean_ai_text(full_text) 
+                task.polished_text = full_text
             elif getattr(task, 'task_type', '') == 'docx' and doc is not None:
                 temp_path = os.path.join('outputs', f"polished_temp_{task.id}.docx")
                 doc.save(temp_path)
