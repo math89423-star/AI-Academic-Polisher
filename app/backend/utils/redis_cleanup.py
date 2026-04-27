@@ -1,8 +1,13 @@
 """Redis 缓存清理工具 - 定期清理过期的任务缓存"""
+from __future__ import annotations
+
+from typing import Any
+
 import redis
 from backend.config import Config
 
-def cleanup_old_task_cache(redis_client, hours=24):
+
+def cleanup_old_task_cache(redis_client: Any, hours: int = 24) -> int:
     """清理超过指定小时数的任务相关缓存"""
     patterns = [
         "text_progress:task:*",
@@ -28,7 +33,7 @@ def cleanup_old_task_cache(redis_client, hours=24):
 
     return cleaned_count
 
-def cleanup_orphaned_workers(redis_client):
+def cleanup_orphaned_workers(redis_client: Any) -> int:
     """清理孤儿 worker 注册信息"""
     # 获取所有 worker keys
     worker_keys = []

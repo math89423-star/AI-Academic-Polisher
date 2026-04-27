@@ -3,7 +3,12 @@
 
 定义任务处理的通用接口和流程
 """
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
+from typing import Optional
+
+import redis as redis_module
 from backend.services.progress_publisher import ProgressPublisher
 from backend.services.cancellation_checker import CancellationChecker
 from backend.services.ai_service_refactored import AIService
@@ -17,15 +22,15 @@ logger = get_logger(__name__)
 class BaseTaskProcessor(ABC):
     """任务处理器基类"""
 
-    def __init__(self, task, redis_client):
+    def __init__(self, task: object, redis_client: redis_module.Redis) -> None:
         self.task = task
-        self.task_id = task.id
+        self.task_id: int = task.id
         self.redis_client = redis_client
         self.progress_publisher = ProgressPublisher(redis_client, task.id)
         self.cancellation_checker = CancellationChecker(redis_client, task.id)
-        self.ai_service = None
+        self.ai_service: Optional[AIService] = None
 
-    def initialize_ai_service(self):
+    def initialize_ai_service(self) -> None:
         """初始化AI服务"""
         from backend.model.models import User
 
@@ -57,7 +62,7 @@ class BaseTaskProcessor(ABC):
             return True
         return False
 
-    def update_task_status(self, status: str):
+    def update_task_status(self, status: str) -> None:
         """
         更新任务状态
 
@@ -69,7 +74,7 @@ class BaseTaskProcessor(ABC):
         logger.info(f"任务 {self.task_id} 状态更新为: {status}")
 
     @abstractmethod
-    def process(self):
+    def process(self) -> None:
         """
         处理任务（子类必须实现）
 
@@ -78,7 +83,7 @@ class BaseTaskProcessor(ABC):
         """
         raise NotImplementedError("子类必须实现process方法")
 
-    def run(self):
+    def run(self) -> None:
         """
         运行任务处理流程
 
@@ -114,7 +119,7 @@ class BaseTaskProcessor(ABC):
             # 清理资源
             self.cleanup()
 
-    def handle_failure(self, exception: Exception):
+    def handle_failure(self, exception: Exception) -> None:
         """
         处理失败情况（子类可以覆盖）
 
@@ -123,7 +128,7 @@ class BaseTaskProcessor(ABC):
         """
         pass
 
-    def cleanup(self):
+    def cleanup(self) -> None:
         """
         清理资源（子类可以覆盖）
         """

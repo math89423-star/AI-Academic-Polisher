@@ -66,21 +66,21 @@ class RedisKeyManager:
     """统一管理所有 Redis key 的生成，避免硬编码散落各处"""
 
     @staticmethod
-    def cancel_key(task_id) -> str:
+    def cancel_key(task_id: int) -> str:
         return f"cancel:task:{task_id}"
 
     @staticmethod
-    def stream_channel(task_id) -> str:
+    def stream_channel(task_id: int) -> str:
         return f"stream:task:{task_id}"
 
     @staticmethod
-    def progress_key(task_id) -> str:
+    def progress_key(task_id: int) -> str:
         return f"text_progress:task:{task_id}"
 
     @staticmethod
-    def docx_done_key(task_id) -> str:
+    def docx_done_key(task_id: int) -> str:
         return f"docx_done_indices:task:{task_id}"
 
     @staticmethod
-    def docx_progress_key(task_id) -> str:
+    def docx_progress_key(task_id: int) -> str:
         return f"docx_progress:task:{task_id}"

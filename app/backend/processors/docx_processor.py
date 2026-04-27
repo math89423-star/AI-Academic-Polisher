@@ -3,6 +3,10 @@
 
 负责处理Word文档润色任务
 """
+from __future__ import annotations
+
+from typing import Optional
+
 import os
 import docx
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -19,11 +23,11 @@ logger = get_logger(__name__)
 class DocxTaskProcessor(BaseTaskProcessor):
     """文档任务处理器"""
 
-    def __init__(self, task):
-        super().__init__(task)
-        self.doc = None
+    def __init__(self, task: object, redis_client: object) -> None:
+        super().__init__(task, redis_client)
+        self.doc: Optional[docx.Document] = None
 
-    def process(self):
+    def process(self) -> None:
         """处理文档任务"""
         done_indices_key = RedisKeyManager.docx_done_key(self.task_id)
 
@@ -67,7 +71,7 @@ class DocxTaskProcessor(BaseTaskProcessor):
 
         self.progress_publisher.publish_block("\n\n🎉 全局高并发重排完毕，正在生成下载链接...\n")
 
-    def _extract_paragraphs(self, done_indices: set) -> list:
+    def _extract_paragraphs(self, done_indices: set[int]) -> list[tuple[int, str]]:
         """
         提取需要处理的段落
 
@@ -99,7 +103,7 @@ class DocxTaskProcessor(BaseTaskProcessor):
 
         return paras_to_process
 
-    def _process_paragraphs_concurrent(self, paras_to_process: list, total_paras: int, done_indices_key: str):
+    def _process_paragraphs_concurrent(self, paras_to_process: list[tuple[int, str]], total_paras: int, done_indices_key: str) -> None:
         """
         并发处理段落
 
@@ -192,7 +196,7 @@ class DocxTaskProcessor(BaseTaskProcessor):
                 strategy=self.task.strategy
             )
 
-    def _apply_results(self, results_dict: dict):
+    def _apply_results(self, results_dict: dict[int, str]) -> None:
         """
         应用润色结果到文档
 
@@ -204,7 +208,7 @@ class DocxTaskProcessor(BaseTaskProcessor):
 
         logger.info(f"应用了 {len(results_dict)} 个段落的润色结果")
 
-    def _save_document(self):
+    def _save_document(self) -> None:
         """保存最终文档"""
         output_path = os.path.join('outputs', f"polished_{self.task_id}.docx")
         self.doc.save(output_path)
@@ -216,7 +220,7 @@ class DocxTaskProcessor(BaseTaskProcessor):
         # 推送下载链接
         self.progress_publisher.publish_download(f"/api/tasks/download/{self.task_id}")
 
-    def _save_temp_document(self):
+    def _save_temp_document(self) -> None:
         """保存临时文档（任务取消时）"""
         temp_path = os.path.join('outputs', f"polished_temp_{self.task_id}.docx")
         self.doc.save(temp_path)
@@ -225,7 +229,7 @@ class DocxTaskProcessor(BaseTaskProcessor):
 
         logger.info(f"任务 {self.task_id} 临时文档已保存: {temp_path}")
 
-    def handle_failure(self, exception: Exception):
+    def handle_failure(self, exception: Exception) -> None:
         """处理失败情况"""
         # 保存临时文档
         if self.doc is not None:
@@ -235,7 +239,7 @@ class DocxTaskProcessor(BaseTaskProcessor):
             except Exception as e:
                 logger.error(f"保存临时文档失败: {str(e)}")
 
-    def cleanup(self):
+    def cleanup(self) -> None:
         """清理资源"""
         super().cleanup()
         # 清理进度缓存

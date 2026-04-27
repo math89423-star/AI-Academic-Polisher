@@ -4,6 +4,10 @@
 
 使用UserService处理业务逻辑
 """
+from __future__ import annotations
+
+from typing import Any
+
 from flask import Blueprint, request, jsonify
 from backend.services.user_service import UserService
 from backend.utils.logging_config import get_logger
@@ -12,7 +16,7 @@ import json
 auth_bp = Blueprint('auth', __name__)
 logger = get_logger(__name__)
 
-def _user_service():
+def _user_service() -> UserService:
     return UserService()
 
 

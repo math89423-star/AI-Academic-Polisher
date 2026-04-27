@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from typing import Any, Type
+
 import os
 from pprint import pp
 from flask import Flask
@@ -6,7 +10,7 @@ from flask_cors import CORS
 from backend.config import Config
 from backend.extensions import db
 
-def create_app(config_class=Config):
+def create_app(config_class: Type[Any] = Config) -> Flask:
     """
     Flask 应用工厂函数
     """

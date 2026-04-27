@@ -3,6 +3,8 @@
 
 负责根据模式和策略构建提示词，从外部 md 文件加载
 """
+from __future__ import annotations
+
 import random
 from backend.prompts_config import (
     load_strategy_prompt,
@@ -14,7 +16,7 @@ from backend.prompts_config import (
 class PromptBuilder:
     """提示词构建器"""
 
-    def __init__(self, strategies_config: dict):
+    def __init__(self, strategies_config: dict[str, dict]) -> None:
         self.strategies = strategies_config
 
     def build_prompt(self, mode: str, strategy_key: str = 'standard') -> str:
@@ -40,7 +42,7 @@ class APIParameterGenerator:
             return round(random.uniform(0.85, 0.95), 2)
 
     @staticmethod
-    def get_api_params(strategy: str = 'standard') -> dict:
+    def get_api_params(strategy: str = 'standard') -> dict[str, float]:
         base_params = {
             'temperature': APIParameterGenerator.get_dynamic_temperature(strategy),
         }

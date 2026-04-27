@@ -3,6 +3,10 @@
 
 负责从AI响应中提取纯净的正文内容
 """
+from __future__ import annotations
+
+from typing import Generator
+
 import re
 from backend.services.ai_client import AIClient
 from backend.services.prompt_builder import PromptBuilder
@@ -14,7 +18,7 @@ logger = get_logger(__name__)
 class ResponseExtractor:
     """响应提取器"""
 
-    def __init__(self, ai_client: AIClient, prompt_builder: PromptBuilder):
+    def __init__(self, ai_client: AIClient, prompt_builder: PromptBuilder) -> None:
         self.ai_client = ai_client
         self.prompt_builder = prompt_builder
 
@@ -69,7 +73,7 @@ class ResponseExtractor:
             logger.error(f"提取器失败: {str(e)}，使用基础清洗文本")
             return basic_clean_text
 
-    def extract_clean_text_stream(self, raw_text: str):
+    def extract_clean_text_stream(self, raw_text: str) -> Generator[str, None, None]:
         """
         从混合文本中提取纯净正文（流式版本）
 

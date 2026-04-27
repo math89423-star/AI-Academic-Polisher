@@ -3,6 +3,10 @@
 
 负责处理API请求的重试逻辑
 """
+from __future__ import annotations
+
+from typing import Any, Callable, Optional
+
 import time
 from backend.config import WorkerConfig
 from backend.utils.logging_config import get_logger
@@ -13,7 +17,7 @@ logger = get_logger(__name__)
 class RetryPolicy:
     """重试策略"""
 
-    def __init__(self, max_retries: int = None, delay_base: int = None):
+    def __init__(self, max_retries: Optional[int] = None, delay_base: Optional[int] = None) -> None:
         """
         初始化重试策略
 
@@ -24,7 +28,7 @@ class RetryPolicy:
         self.max_retries = max_retries or WorkerConfig.RETRY_TIMES
         self.delay_base = delay_base or WorkerConfig.RETRY_DELAY_BASE
 
-    def execute_with_retry(self, func, *args, **kwargs):
+    def execute_with_retry(self, func: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
         """
         执行函数并在失败时重试
 

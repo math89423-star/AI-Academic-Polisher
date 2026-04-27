@@ -16,7 +16,7 @@ logger = get_logger(__name__)
 class TextTaskProcessor(BaseTaskProcessor):
     """文本任务处理器"""
 
-    def process(self):
+    def process(self) -> None:
         """处理文本任务"""
         # 切片文本
         chunks = split_text_into_chunks(
@@ -34,7 +34,7 @@ class TextTaskProcessor(BaseTaskProcessor):
             # 长文本：并发处理
             self._process_long_text(chunks, total_chunks)
 
-    def _process_short_text(self):
+    def _process_short_text(self) -> None:
         """处理短文本（流式输出）"""
         logger.info(f"任务 {self.task_id} 使用流式处理")
 
@@ -92,7 +92,7 @@ class TextTaskProcessor(BaseTaskProcessor):
         self.task.polished_text = full_text
         db.session.commit()
 
-    def _process_long_text(self, chunks: list, total_chunks: int):
+    def _process_long_text(self, chunks: list[str], total_chunks: int) -> None:
         """处理长文本（并发处理）"""
         logger.info(f"任务 {self.task_id} 使用并发处理 ({WorkerConfig.MAX_WORKERS} 线程)")
 
@@ -187,7 +187,7 @@ class TextTaskProcessor(BaseTaskProcessor):
             strategy=self.task.strategy
         )
 
-    def handle_failure(self, exception: Exception):
+    def handle_failure(self, exception: Exception) -> None:
         """处理失败情况"""
         # 保存已完成的部分
         if hasattr(self, 'full_text') and self.full_text:
@@ -195,7 +195,7 @@ class TextTaskProcessor(BaseTaskProcessor):
             db.session.commit()
             logger.info(f"任务 {self.task_id} 失败，已保存部分结果")
 
-    def cleanup(self):
+    def cleanup(self) -> None:
         """清理资源"""
         super().cleanup()
         # 清理进度缓存

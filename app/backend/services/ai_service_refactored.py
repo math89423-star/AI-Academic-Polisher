@@ -1,8 +1,6 @@
-"""
-重构后的AI服务层
+from __future__ import annotations
 
-整合了AI客户端、提示词构建、响应提取和重试策略
-"""
+from typing import Generator, Optional
 from backend.services.ai_client import AIClient
 from backend.services.prompt_builder import PromptBuilder, APIParameterGenerator
 from backend.services.response_extractor import ResponseExtractor
@@ -31,7 +29,7 @@ class AIService:
         self.retry_policy = RetryPolicy()
         self.param_generator = APIParameterGenerator()
 
-    def generate_stream(self, text: str, mode: str = 'zh', strategy: str = 'standard', history_text: str = None):
+    def generate_stream(self, text: str, mode: str = 'zh', strategy: str = 'standard', history_text: Optional[str] = None) -> Generator[str, None, None]:
         """
         流式生成润色内容（用于短文本）
 

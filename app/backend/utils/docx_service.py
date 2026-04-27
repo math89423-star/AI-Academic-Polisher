@@ -1,7 +1,11 @@
 # backend/utils/docx_service.py
-import re
+from __future__ import annotations
 
-def is_paragraph_needs_polishing(para, mode='zh'):
+import re
+from docx.text.paragraph import Paragraph
+
+
+def is_paragraph_needs_polishing(para: Paragraph, mode: str = 'zh') -> bool:
     """判定一个段落是否需要被润色"""
     xml_str = para._element.xml
     if '<w:drawing' in xml_str or '<v:shape' in xml_str or '<w:pict' in xml_str:
@@ -33,12 +37,12 @@ def is_paragraph_needs_polishing(para, mode='zh'):
         
     return True
 
-def replace_paragraph_text(para, new_text):
+def replace_paragraph_text(para: Paragraph, new_text: str) -> None:
     for run in para.runs:
         run.text = ""
     para.add_run(new_text)
 
-def check_stop_signal(text):
+def check_stop_signal(text: str) -> bool:
     stop_keywords = ['参考文献', 'References', '致谢', 'Acknowledgements']
     for kw in stop_keywords:
         if kw in text:

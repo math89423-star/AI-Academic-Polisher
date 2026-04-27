@@ -3,6 +3,8 @@
 
 使用UserService、ApiConfigService和装饰器
 """
+from __future__ import annotations
+
 from flask import Blueprint, request, jsonify
 from backend.services.user_service import UserService
 from backend.services.api_config_service import ApiConfigService
@@ -16,10 +18,10 @@ import os
 admin_bp = Blueprint('admin', __name__)
 logger = get_logger(__name__)
 
-def _user_service():
+def _user_service() -> UserService:
     return UserService()
 
-def _api_config_service():
+def _api_config_service() -> ApiConfigService:
     return ApiConfigService()
 
 

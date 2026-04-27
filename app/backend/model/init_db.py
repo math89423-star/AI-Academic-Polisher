@@ -12,7 +12,7 @@ if project_root not in sys.path:
 
 from backend.config import Config
 
-def create_database_if_not_exists():
+def create_database_if_not_exists() -> None:
     """在初始化 SQLAlchemy 前，先通过原生驱动强制创建数据库 (带智能重试与防乱码机制)"""
     print(f"⏳ 正在检查并创建数据库: {Config.DB_NAME}...")
 
@@ -47,7 +47,7 @@ def create_database_if_not_exists():
                 print(f"错误详情: {str(e)}")
                 sys.exit(1)
 
-def init_database():
+def init_database() -> None:
     """初始化数据库表并插入默认数据"""
     print("=" * 50)
     print("🚀 开始数据库初始化流程")

@@ -3,6 +3,10 @@ API配置服务层
 
 负责API配置的管理
 """
+from __future__ import annotations
+
+from typing import Any, Optional
+
 from backend.model.models import ApiConfig, User
 from backend.extensions import db
 import httpx
@@ -12,10 +16,10 @@ import asyncio
 class ApiConfigService:
     """API配置服务"""
 
-    def __init__(self, db_session=None):
+    def __init__(self, db_session: Any = None) -> None:
         self.db = db_session or db
 
-    def get_all_configs(self) -> list:
+    def get_all_configs(self) -> list[dict[str, Any]]:
         """
         获取所有API配置
 
@@ -84,7 +88,7 @@ class ApiConfigService:
             self.db.session.rollback()
             raise ValueError("更新失败，请检查线路名称是否重复")
 
-    def delete_config(self, config_id: int) -> dict:
+    def delete_config(self, config_id: int) -> dict[str, str]:
         """
         删除API配置
 
@@ -116,7 +120,7 @@ class ApiConfigService:
             self.db.session.rollback()
             raise
 
-    def resolve_config(self, user: User, strategy: str) -> tuple:
+    def resolve_config(self, user: User, strategy: str) -> tuple[Optional[str], Optional[str], str]:
         """
         根据用户和策略解析API配置
 
@@ -152,7 +156,7 @@ class ApiConfigService:
 
         return api_key, base_url, model_name
 
-    async def test_api_connection(self, api_key: str, base_url: str, model_name: str, api_type: str) -> dict:
+    async def test_api_connection(self, api_key: str, base_url: str, model_name: str, api_type: str) -> dict[str, Any]:
         """
         测试API连接
 

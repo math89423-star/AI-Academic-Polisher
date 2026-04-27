@@ -3,12 +3,16 @@
 
 提供权限检查、日志记录等装饰器
 """
+from __future__ import annotations
+
+from typing import Any, Callable
+
 from functools import wraps
 from flask import request, jsonify
 from backend.services.user_service import UserService
 
 
-def require_admin(f):
+def require_admin(f: Callable[..., Any]) -> Callable[..., Any]:
     """
     管理员权限装饰器
 
@@ -34,7 +38,7 @@ def require_admin(f):
     return decorated_function
 
 
-def require_user(f):
+def require_user(f: Callable[..., Any]) -> Callable[..., Any]:
     """
     用户认证装饰器
 

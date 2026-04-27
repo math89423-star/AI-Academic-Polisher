@@ -3,6 +3,9 @@
 
 负责检测和处理任务取消信号
 """
+from __future__ import annotations
+
+import redis as redis_module
 from backend.config import RedisKeyManager
 from backend.utils.logging_config import get_logger
 
@@ -12,7 +15,7 @@ logger = get_logger(__name__)
 class CancellationChecker:
     """取消信号检测器"""
 
-    def __init__(self, redis_client, task_id: int):
+    def __init__(self, redis_client: redis_module.Redis, task_id: int) -> None:
         """
         初始化取消信号检测器
 
@@ -37,7 +40,7 @@ class CancellationChecker:
             logger.error(f"检查取消信号失败: {str(e)}")
             return False
 
-    def mark_cancelled(self, task, db_session):
+    def mark_cancelled(self, task: object, db_session: object) -> None:
         """
         标记任务为已取消
 
@@ -54,7 +57,7 @@ class CancellationChecker:
             logger.error(f"标记任务取消失败: {str(e)}")
             db_session.rollback()
 
-    def clear_cancel_signal(self):
+    def clear_cancel_signal(self) -> None:
         """清除取消信号"""
         try:
             self.redis.delete(self.cancel_key)

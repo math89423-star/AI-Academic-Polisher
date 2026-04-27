@@ -3,6 +3,10 @@
 
 负责用户认证、权限检查等业务逻辑
 """
+from __future__ import annotations
+
+from typing import Any, Optional
+
 from backend.model.models import User
 from backend.extensions import db
 
@@ -10,7 +14,7 @@ from backend.extensions import db
 class UserService:
     """用户服务"""
 
-    def __init__(self, db_session=None):
+    def __init__(self, db_session: Any = None) -> None:
         self.db = db_session or db
 
     def authenticate_user(self, username: str) -> User:
@@ -79,7 +83,7 @@ class UserService:
         user = User.query.filter_by(username=username).first()
         return user and user.role == 'admin'
 
-    def create_user(self, username: str, role: str = 'user', password: str = None, api_config_id: int = None) -> User:
+    def create_user(self, username: str, role: str = 'user', password: Optional[str] = None, api_config_id: Optional[int] = None) -> User:
         """
         创建用户
 
@@ -117,7 +121,7 @@ class UserService:
             self.db.session.rollback()
             raise
 
-    def update_user_api_config(self, username: str, mode: str, api_config_id: int = None) -> User:
+    def update_user_api_config(self, username: str, mode: str, api_config_id: Optional[int] = None) -> User:
         """
         更新用户API配置
 
@@ -152,7 +156,7 @@ class UserService:
             self.db.session.rollback()
             raise
 
-    def delete_user(self, username: str) -> dict:
+    def delete_user(self, username: str) -> dict[str, str]:
         """
         删除用户及其所有任务
 

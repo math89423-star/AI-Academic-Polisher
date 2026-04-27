@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from typing import Any
+
 import hashlib
 import json
 from datetime import datetime, timedelta
@@ -10,7 +14,7 @@ def compute_text_hash(text: str) -> str:
     normalized = text.strip().replace('\r\n', '\n').replace('\r', '\n')
     return hashlib.sha256(normalized.encode('utf-8')).hexdigest()
 
-def check_duplicate_text(redis_client, text: str, user_id: int, hours: int = 24) -> dict:
+def check_duplicate_text(redis_client: Any, text: str, user_id: int, hours: int = 24) -> dict[str, Any]:
     """
     检查文本是否在指定时间内已处理过
 
@@ -48,7 +52,7 @@ def check_duplicate_text(redis_client, text: str, user_id: int, hours: int = 24)
 
     return {'is_duplicate': False}
 
-def store_text_hash(redis_client, text: str, user_id: int, task_id: int, hours: int = 24):
+def store_text_hash(redis_client: Any, text: str, user_id: int, task_id: int, hours: int = 24) -> None:
     """
     存储文本哈希记录
 

@@ -3,7 +3,12 @@ AI客户端封装
 
 负责OpenAI客户端的创建和管理
 """
-from openai import OpenAI
+from __future__ import annotations
+
+from typing import Any, Union
+
+from openai import OpenAI, Stream
+from openai.types.chat import ChatCompletion, ChatCompletionChunk
 
 
 class AIClient:
@@ -27,7 +32,7 @@ class AIClient:
         return self._client
 
     @staticmethod
-    def _get_custom_headers() -> dict:
+    def _get_custom_headers() -> dict[str, str]:
         """返回自定义headers用于绕过反爬"""
         return {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -37,8 +42,8 @@ class AIClient:
             "Origin": "https://chat.openai.com"
         }
 
-    def create_completion(self, messages: list, temperature: float, presence_penalty: float = 0,
-                         frequency_penalty: float = 0, stream: bool = False):
+    def create_completion(self, messages: list[dict[str, str]], temperature: float, presence_penalty: float = 0,
+                         frequency_penalty: float = 0, stream: bool = False) -> Union[ChatCompletion, Stream[ChatCompletionChunk]]:
         """
         创建聊天完成请求
 

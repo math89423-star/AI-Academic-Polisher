@@ -3,12 +3,16 @@
 
 统一的日志配置和管理
 """
+from __future__ import annotations
+
+from typing import Any, Optional
+
 import logging
 import os
 from logging.handlers import RotatingFileHandler
 
 
-def setup_logging(app=None):
+def setup_logging(app: Any = None) -> logging.Logger:
     """
     配置应用日志
 
@@ -68,7 +72,7 @@ def setup_logging(app=None):
     return root_logger
 
 
-def get_logger(name):
+def get_logger(name: str) -> logging.Logger:
     """
     获取指定名称的日志记录器
 

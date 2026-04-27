@@ -3,6 +3,8 @@
 
 使用TaskService和装饰器
 """
+from __future__ import annotations
+
 from flask import Blueprint, request, jsonify, Response, send_file
 from backend.services.task_service import TaskService
 from backend.services.user_service import UserService
@@ -16,10 +18,10 @@ import json
 task_bp = Blueprint('task', __name__)
 logger = get_logger(__name__)
 
-def _task_service():
+def _task_service() -> TaskService:
     return TaskService()
 
-def _user_service():
+def _user_service() -> UserService:
     return UserService()
 
 

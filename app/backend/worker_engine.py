@@ -3,11 +3,16 @@
 
 使用处理器模式，职责更加清晰
 """
+from __future__ import annotations
+
+from typing import Optional
+
 from backend.extensions import db, redis_client
 from backend import create_app
 from backend.model.models import Task
 from backend.processors.text_processor import TextTaskProcessor
 from backend.processors.docx_processor import DocxTaskProcessor
+from backend.processors.base_processor import BaseTaskProcessor
 from backend.utils.logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -15,7 +20,7 @@ logger = get_logger(__name__)
 app = create_app()
 
 
-def process_task(task_id: int):
+def process_task(task_id: int) -> None:
     """
     处理任务（重构版）
 
@@ -55,7 +60,7 @@ def process_task(task_id: int):
             logger.info(f"任务 {task_id} 处理流程结束")
 
 
-def _get_processor(task):
+def _get_processor(task: object) -> Optional[BaseTaskProcessor]:
     """
     根据任务类型获取对应的处理器
 

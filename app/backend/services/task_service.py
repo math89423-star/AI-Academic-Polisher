@@ -3,6 +3,10 @@
 
 负责任务的创建、取消、恢复等业务逻辑
 """
+from __future__ import annotations
+
+from typing import Any, Optional
+
 from backend.extensions import db, redis_client, task_queue
 from backend.config import RedisKeyManager
 from backend.model.models import Task, User
@@ -15,7 +19,7 @@ from werkzeug.utils import secure_filename
 class TaskService:
     """任务服务"""
 
-    def __init__(self, db_session=None, redis=None, queue=None):
+    def __init__(self, db_session: Any = None, redis: Any = None, queue: Any = None) -> None:
         self.db = db_session or db
         self.redis = redis or redis_client
         self.queue = queue or task_queue
@@ -68,7 +72,7 @@ class TaskService:
             self.db.session.rollback()
             raise
 
-    def create_docx_task(self, user: User, file, mode: str, strategy: str) -> Task:
+    def create_docx_task(self, user: User, file: Any, mode: str, strategy: str) -> Task:
         """
         创建文档任务
 
