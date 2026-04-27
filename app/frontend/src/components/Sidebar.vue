@@ -4,6 +4,9 @@
       <button class="new-task-btn" @click="$emit('new-task')">
         + 新建润色任务
       </button>
+      <button class="clear-all-btn" @click="handleDeleteAll">
+        🗑️ 清空历史
+      </button>
     </div>
     <div class="history-list">
       <div
@@ -39,7 +42,7 @@ defineProps({
   currentTaskId: Number
 })
 
-const emit = defineEmits(['new-task', 'switch-task', 'delete-task'])
+const emit = defineEmits(['new-task', 'switch-task', 'delete-task', 'delete-all'])
 
 const getStatusIcon = (status) => {
   if (['completed', 'done'].includes(status)) return '✅'
@@ -67,10 +70,18 @@ const handleDelete = (taskId) => {
     emit('delete-task', taskId)
   }
 }
+
+const handleDeleteAll = () => {
+  if (confirm('确定要清空所有历史任务吗？进行中的任务不会被删除。')) {
+    emit('delete-all')
+  }
+}
 </script>
 
 <style scoped>
 .history-right { display: inline-flex; align-items: center; gap: 4px; }
 .delete-btn { background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 16px; padding: 0 2px; line-height: 1; }
 .delete-btn:hover { color: #ef4444; }
+.clear-all-btn { background: none; border: 1px solid #475569; color: #94a3b8; cursor: pointer; font-size: 12px; padding: 4px 8px; border-radius: 4px; white-space: nowrap; }
+.clear-all-btn:hover { color: #ef4444; border-color: #ef4444; }
 </style>

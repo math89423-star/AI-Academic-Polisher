@@ -159,7 +159,18 @@ const copyResult = async () => {
   if (!props.currentTask?.polished) return
 
   try {
-    await navigator.clipboard.writeText(props.currentTask.polished)
+    if (navigator.clipboard) {
+      await navigator.clipboard.writeText(props.currentTask.polished)
+    } else {
+      const textarea = document.createElement('textarea')
+      textarea.value = props.currentTask.polished
+      textarea.style.position = 'fixed'
+      textarea.style.opacity = '0'
+      document.body.appendChild(textarea)
+      textarea.select()
+      document.execCommand('copy')
+      document.body.removeChild(textarea)
+    }
     alert('已复制到剪贴板')
   } catch (err) {
     console.error('复制失败:', err)

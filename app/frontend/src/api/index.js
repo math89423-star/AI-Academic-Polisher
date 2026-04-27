@@ -102,6 +102,19 @@ export const taskAPI = {
     return res.json()
   },
 
+  async deleteAllTasks(username) {
+    const res = await fetch(`${API_BASE}/tasks/delete_all`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username })
+    })
+    if (!res.ok) {
+      const data = await res.json()
+      throw new Error(data.error || '清空任务失败')
+    }
+    return res.json()
+  },
+
   async getQueueStatus() {
     const res = await fetch(`${API_BASE}/tasks/queue_status`)
     if (!res.ok) return { pending_count: 0 }

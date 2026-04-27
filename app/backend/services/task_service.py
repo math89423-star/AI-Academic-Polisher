@@ -269,3 +269,14 @@ class TaskService:
         self.db.session.delete(task)
         self.db.session.commit()
         return {"message": "任务已删除", "task_id": task_id}
+
+    def delete_all_tasks(self, user_id: int) -> dict:
+        tasks = Task.query.filter(
+            Task.user_id == user_id,
+            Task.status.notin_(['processing', 'queued'])
+        ).all()
+        count = len(tasks)
+        for task in tasks:
+            self.db.session.delete(task)
+        self.db.session.commit()
+        return {"message": f"已删除 {count} 条任务", "deleted_count": count}

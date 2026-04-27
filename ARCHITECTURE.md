@@ -150,6 +150,7 @@ HTTP Request
   │   ├─ cancel_task()       → TaskService.cancel_task()        → redis_client.set(cancel:*)
   │   ├─ resume_task()       → TaskService.resume_task()        → task_queue.enqueue()
   │   ├─ delete_task()       → TaskService.delete_task()        → db.session.delete()
+  │   ├─ delete_all_tasks()  → TaskService.delete_all_tasks()   → 批量删除非进行中任务
   │   ├─ check_duplicate()   → check_duplicate_text()           → redis_client (text_hash:*)
   │   └─ get_strategies()    → UserService.get_user_strategies()
   │
@@ -260,6 +261,7 @@ taskStore.js (Pinia)
   │           cancelTask()    → taskAPI.cancelTask()
   │           resumeTask()    → taskAPI.resumeTask()    → startSSE()
   │           deleteTask()    → taskAPI.deleteTask()
+  │           deleteAllTasks()→ taskAPI.deleteAllTasks()
   │           loadHistory()   → taskAPI.getHistory()
   │           loadStrategies()→ taskAPI.getStrategies()
   └─ Polling: startQueuePolling() → taskAPI.getQueueStatus() (每3秒)
@@ -268,7 +270,7 @@ api/index.js
   ├─ authAPI:  { login }
   └─ taskAPI:  { getHistory, getStrategies, checkDuplicate,
   │              createTask, uploadDocx, cancelTask, resumeTask,
-  │              deleteTask, getQueueStatus, connectSSE }
+  │              deleteTask, deleteAllTasks, getQueueStatus, connectSSE }
   └─ 基础URL:  /api/auth/* , /api/tasks/*
 ```
 

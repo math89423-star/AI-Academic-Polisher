@@ -181,6 +181,21 @@ export const useTaskStore = defineStore('task', () => {
     }
   }
 
+  async function deleteAllTasks(username) {
+    await taskAPI.deleteAllTasks(username)
+    const keepIds = Object.keys(tasks.value).filter(id => {
+      const t = tasks.value[id]
+      return t.status === 'processing' || t.status === 'queued'
+    })
+    const kept = {}
+    keepIds.forEach(id => { kept[id] = tasks.value[id] })
+    tasks.value = kept
+    if (!tasks.value[currentTaskId.value]) {
+      const remaining = sortedTasks.value
+      currentTaskId.value = remaining.length > 0 ? remaining[0].id : null
+    }
+  }
+
   async function fetchQueueStatus() {
     try {
       const data = await taskAPI.getQueueStatus()
@@ -218,6 +233,7 @@ export const useTaskStore = defineStore('task', () => {
     cancelTask,
     resumeTask,
     deleteTask,
+    deleteAllTasks,
     startQueuePolling,
     stopQueuePolling
   }

@@ -6,6 +6,7 @@
       @new-task="taskStore.createNewTask"
       @switch-task="taskStore.switchTask"
       @delete-task="handleDeleteTask"
+      @delete-all="handleDeleteAll"
     />
 
     <div class="main-workspace">
@@ -86,6 +87,14 @@ const handleDeleteTask = async (taskId) => {
     await taskStore.deleteTask(taskId, props.username)
   } catch (err) {
     alert(err.message || '删除失败')
+  }
+}
+
+const handleDeleteAll = async () => {
+  try {
+    await taskStore.deleteAllTasks(props.username)
+  } catch (err) {
+    alert(err.message || '清空失败')
   }
 }
 </script>

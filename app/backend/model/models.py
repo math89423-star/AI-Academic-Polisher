@@ -40,13 +40,16 @@ class User(db.Model):
             return False
         return check_password_hash(self.password_hash, password)
 
+from sqlalchemy.dialects.mysql import LONGTEXT
+
+
 class Task(db.Model):
     __tablename__ = 'tasks'
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), index=True)
     title = db.Column(db.String(100))
-    original_text = db.Column(db.Text, nullable=True)
-    polished_text = db.Column(db.Text)
+    original_text = db.Column(LONGTEXT, nullable=True)
+    polished_text = db.Column(LONGTEXT)
     mode = db.Column(db.String(10), default='zh')
     status = db.Column(db.String(20), default='pending')
     

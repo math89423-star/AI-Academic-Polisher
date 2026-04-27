@@ -115,81 +115,86 @@ def upload_document():
 @task_bp.route('/<int:task_id>/stream', methods=['GET'])
 def stream_results(task_id):
     """SSE流式推送任务结果"""
+    from flask import current_app
+    app = current_app._get_current_object()
+
     def generate():
         from backend.model.models import Task
         from backend.config import SSEConfig
+        from backend.extensions import db
         import time
 
-        pubsub = redis_client.pubsub()
-        channel_name = RedisKeyManager.stream_channel(task_id)
-        pubsub.subscribe(channel_name)
+        with app.app_context():
+            pubsub = redis_client.pubsub()
+            channel_name = RedisKeyManager.stream_channel(task_id)
+            pubsub.subscribe(channel_name)
 
-        try:
-            initial_payload = json.dumps({
-                'type': 'block',
-                'content': '⏳ 已连接到推送通道，等待 AI 响应...\n\n'
-            })
-            yield f"data: {initial_payload}\n\n"
+            try:
+                initial_payload = json.dumps({
+                    'type': 'block',
+                    'content': '⏳ 已连接到推送通道，等待 AI 响应...\n\n'
+                })
+                yield f"data: {initial_payload}\n\n"
 
-            task = Task.query.get(task_id)
-            if task and task.status == 'completed' and task.polished_text:
-                done_payload = json.dumps({'type': 'full', 'content': task.polished_text})
-                yield f"data: {done_payload}\n\n"
-                finish_payload = json.dumps({'type': 'done', 'content': '完成'})
-                yield f"data: {finish_payload}\n\n"
-                return
-            if task and task.status == 'failed':
-                err_payload = json.dumps({'type': 'fatal', 'content': '任务处理失败'})
-                yield f"data: {err_payload}\n\n"
-                return
+                task = db.session.get(Task, task_id)
+                if task and task.status == 'completed' and task.polished_text:
+                    done_payload = json.dumps({'type': 'full', 'content': task.polished_text})
+                    yield f"data: {done_payload}\n\n"
+                    finish_payload = json.dumps({'type': 'done', 'content': '完成'})
+                    yield f"data: {finish_payload}\n\n"
+                    return
+                if task and task.status == 'failed':
+                    err_payload = json.dumps({'type': 'fatal', 'content': '任务处理失败'})
+                    yield f"data: {err_payload}\n\n"
+                    return
 
-            last_message_time = time.time()
-            last_db_check = time.time()
-            db_check_interval = 3
-            timeout = SSEConfig.TIMEOUT
-            heartbeat_interval = SSEConfig.HEARTBEAT_INTERVAL
+                last_message_time = time.time()
+                last_db_check = time.time()
+                db_check_interval = 3
+                timeout = SSEConfig.TIMEOUT
+                heartbeat_interval = SSEConfig.HEARTBEAT_INTERVAL
 
-            while True:
-                now = time.time()
+                while True:
+                    now = time.time()
 
-                if now - last_message_time > timeout:
-                    error_payload = json.dumps({
-                        'type': 'fatal',
-                        'content': '连接超时，请刷新页面重试'
-                    })
-                    yield f"data: {error_payload}\n\n"
-                    break
-
-                message = pubsub.get_message(timeout=heartbeat_interval)
-
-                if message and message['type'] == 'message':
-                    raw_data = message['data']
-                    yield raw_data
-                    last_message_time = time.time()
-
-                    if '"type": "done"' in raw_data or '"type": "fatal"' in raw_data:
+                    if now - last_message_time > timeout:
+                        error_payload = json.dumps({
+                            'type': 'fatal',
+                            'content': '连接超时，请刷新页面重试'
+                        })
+                        yield f"data: {error_payload}\n\n"
                         break
-                else:
-                    if now - last_db_check >= db_check_interval:
-                        last_db_check = now
-                        db.session.expire_all()
-                        task = Task.query.get(task_id)
-                        if task and task.status == 'completed' and task.polished_text:
-                            done_payload = json.dumps({'type': 'stream', 'content': task.polished_text})
-                            yield f"data: {done_payload}\n\n"
-                            finish_payload = json.dumps({'type': 'done', 'content': '完成'})
-                            yield f"data: {finish_payload}\n\n"
-                            break
-                        elif task and task.status == 'failed':
-                            err_payload = json.dumps({'type': 'fatal', 'content': '任务处理失败'})
-                            yield f"data: {err_payload}\n\n"
-                            break
 
-                    yield ": heartbeat\n\n"
+                    message = pubsub.get_message(timeout=heartbeat_interval)
 
-        finally:
-            pubsub.unsubscribe(channel_name)
-            pubsub.close()
+                    if message and message['type'] == 'message':
+                        raw_data = message['data']
+                        yield raw_data
+                        last_message_time = time.time()
+
+                        if '"type": "done"' in raw_data or '"type": "fatal"' in raw_data:
+                            break
+                    else:
+                        if now - last_db_check >= db_check_interval:
+                            last_db_check = now
+                            db.session.expire_all()
+                            task = db.session.get(Task, task_id)
+                            if task and task.status == 'completed' and task.polished_text:
+                                done_payload = json.dumps({'type': 'full', 'content': task.polished_text})
+                                yield f"data: {done_payload}\n\n"
+                                finish_payload = json.dumps({'type': 'done', 'content': '完成'})
+                                yield f"data: {finish_payload}\n\n"
+                                break
+                            elif task and task.status == 'failed':
+                                err_payload = json.dumps({'type': 'fatal', 'content': '任务处理失败'})
+                                yield f"data: {err_payload}\n\n"
+                                break
+
+                        yield ": heartbeat\n\n"
+
+            finally:
+                pubsub.unsubscribe(channel_name)
+                pubsub.close()
 
     return Response(generate(), mimetype='text/event-stream')
 
@@ -306,6 +311,22 @@ def delete_task(task_id):
         return jsonify(result), 200
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
+
+
+@task_bp.route('/delete_all', methods=['POST'])
+def delete_all_tasks():
+    """删除用户所有历史任务"""
+    data = request.json
+    username = data.get('username')
+
+    try:
+        user = _user_service().authenticate_user(username)
+    except ValueError:
+        return jsonify({"error": "无权操作"}), 403
+
+    result = _task_service().delete_all_tasks(user.id)
+    logger.info(f"用户 {username} 清空历史任务，删除 {result['deleted_count']} 条")
+    return jsonify(result), 200
 
 
 @task_bp.route('/queue_status', methods=['GET'])
