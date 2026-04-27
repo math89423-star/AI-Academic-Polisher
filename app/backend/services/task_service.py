@@ -208,3 +208,13 @@ class TaskService:
             })
 
         return result
+
+    def delete_task(self, task_id: int, user_id: int) -> dict:
+        task = Task.query.get(task_id)
+        if not task or task.user_id != user_id:
+            raise ValueError("无权操作此任务")
+        if task.status in ['processing', 'queued']:
+            raise ValueError("进行中的任务无法删除，请先取消")
+        self.db.session.delete(task)
+        self.db.session.commit()
+        return {"message": "任务已删除", "task_id": task_id}

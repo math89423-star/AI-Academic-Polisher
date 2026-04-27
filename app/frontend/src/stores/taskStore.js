@@ -109,20 +109,26 @@ export const useTaskStore = defineStore('task', () => {
         if (!task) return
 
         if (data.type === 'status') {
-          task.status = data.status
-          task.serverInfo = data.message || ''
-        } else if (data.type === 'chunk') {
-          task.polished += data.content
+          const c = data.content || {}
+          task.status = c.status || data.status
+          task.serverInfo = c.message || data.message || ''
+        } else if (data.type === 'chunk' || data.type === 'stream') {
+          task.polished += (typeof data.content === 'string' ? data.content : '')
+        } else if (data.type === 'block') {
+          task.serverInfo = typeof data.content === 'string' ? data.content : ''
+        } else if (data.type === 'progress') {
+          task.serverInfo = `处理中 ${data.content}%`
         } else if (data.type === 'done') {
           task.status = 'completed'
-          task.downloadUrl = data.download_url || ''
+          const c = data.content || {}
+          task.downloadUrl = (typeof c === 'object' ? c.download_url : '') || ''
           if (eventSource.value) {
             eventSource.value.close()
             eventSource.value = null
           }
-        } else if (data.type === 'error') {
+        } else if (data.type === 'error' || data.type === 'fatal') {
           task.status = 'failed'
-          task.serverInfo = data.message || '处理失败'
+          task.serverInfo = (typeof data.content === 'string' ? data.content : data.message) || '处理失败'
           if (eventSource.value) {
             eventSource.value.close()
             eventSource.value = null
@@ -165,6 +171,15 @@ export const useTaskStore = defineStore('task', () => {
     startSSE(taskId)
   }
 
+  async function deleteTask(taskId, username) {
+    await taskAPI.deleteTask(taskId, username)
+    delete tasks.value[taskId]
+    if (currentTaskId.value === taskId) {
+      const remaining = sortedTasks.value
+      currentTaskId.value = remaining.length > 0 ? remaining[0].id : null
+    }
+  }
+
   async function fetchQueueStatus() {
     try {
       const data = await taskAPI.getQueueStatus()
@@ -201,6 +216,7 @@ export const useTaskStore = defineStore('task', () => {
     stopSSE,
     cancelTask,
     resumeTask,
+    deleteTask,
     startQueuePolling,
     stopQueuePolling
   }

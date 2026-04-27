@@ -20,6 +20,7 @@
           📋 复制
         </button>
         <span class="status-badge">{{ statusText }}</span>
+        <span v-if="isWaiting" class="elapsed-timer">已等待 {{ elapsedText }}</span>
         <span class="server-msg">{{ currentTask?.serverInfo || '' }}</span>
         <a
           v-if="currentTask?.downloadUrl"
@@ -38,12 +39,13 @@
         :class="{ 'diff-mode': isDiffMode }"
         v-html="displayContent"
       ></div>
+      <div v-if="resultCharCount > 0" class="char-count">字数: {{ resultCharCount }}</div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onUnmounted } from 'vue'
 
 const props = defineProps({
   currentTask: Object
@@ -53,6 +55,47 @@ const emit = defineEmits(['cancel', 'resume'])
 
 const isDiffMode = ref(false)
 const resultBox = ref(null)
+const elapsedSeconds = ref(0)
+let timerInterval = null
+
+const isWaiting = computed(() => {
+  if (!props.currentTask) return false
+  return ['queued', 'processing'].includes(props.currentTask.status)
+})
+
+const elapsedText = computed(() => {
+  const s = elapsedSeconds.value
+  if (s < 60) return `${s}s`
+  const m = Math.floor(s / 60)
+  const rem = s % 60
+  return `${m}m ${rem}s`
+})
+
+function startTimer() {
+  stopTimer()
+  elapsedSeconds.value = 0
+  timerInterval = setInterval(() => { elapsedSeconds.value++ }, 1000)
+}
+
+function stopTimer() {
+  if (timerInterval) {
+    clearInterval(timerInterval)
+    timerInterval = null
+  }
+}
+
+watch(isWaiting, (waiting) => {
+  if (waiting) startTimer()
+  else stopTimer()
+}, { immediate: true })
+
+watch(() => props.currentTask?.id, () => {
+  stopTimer()
+  elapsedSeconds.value = 0
+  if (isWaiting.value) startTimer()
+})
+
+onUnmounted(() => stopTimer())
 
 const statusText = computed(() => {
   if (!props.currentTask) return '待命'
@@ -73,6 +116,10 @@ const showCopyButton = computed(() => {
   return props.currentTask &&
     props.currentTask.polished &&
     props.currentTask.polished.trim()
+})
+
+const resultCharCount = computed(() => {
+  return props.currentTask?.polished?.length || 0
 })
 
 const displayContent = computed(() => {
@@ -164,4 +211,20 @@ const generateDiff = (original, polished) => {
   background-color: var(--primary-color);
   color: white;
 }
+
+.elapsed-timer {
+  margin-left: 8px;
+  font-size: 12px;
+  color: #f59e0b;
+  font-weight: 500;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.content-area { position: relative; }
+.char-count { position: absolute; bottom: 8px; right: 12px; font-size: 12px; color: #94a3b8; pointer-events: none; }
 </style>

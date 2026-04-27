@@ -15,7 +15,15 @@
       >
         <div class="history-time">
           <span>{{ task.time }}</span>
-          <span>{{ getStatusIcon(task.status) }}</span>
+          <span class="history-right">
+            <span>{{ getStatusIcon(task.status) }}</span>
+            <button
+              v-if="canDelete(task.status)"
+              class="delete-btn"
+              title="删除"
+              @click.stop="handleDelete(task.id)"
+            >×</button>
+          </span>
         </div>
         <div class="history-preview">
           {{ getTaskIcon(task.task_type) }} {{ getTaskPreview(task) }}
@@ -31,7 +39,7 @@ defineProps({
   currentTaskId: Number
 })
 
-defineEmits(['new-task', 'switch-task'])
+const emit = defineEmits(['new-task', 'switch-task', 'delete-task'])
 
 const getStatusIcon = (status) => {
   if (['completed', 'done'].includes(status)) return '✅'
@@ -49,4 +57,20 @@ const getTaskPreview = (task) => {
   }
   return task.original ? task.original.substring(0, 10) + '...' : '新任务'
 }
+
+const canDelete = (status) => {
+  return !['processing', 'queued'].includes(status)
+}
+
+const handleDelete = (taskId) => {
+  if (confirm('确定要删除这条任务记录吗？')) {
+    emit('delete-task', taskId)
+  }
+}
 </script>
+
+<style scoped>
+.history-right { display: inline-flex; align-items: center; gap: 4px; }
+.delete-btn { background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 16px; padding: 0 2px; line-height: 1; }
+.delete-btn:hover { color: #ef4444; }
+</style>

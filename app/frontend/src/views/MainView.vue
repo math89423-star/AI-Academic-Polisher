@@ -5,13 +5,14 @@
       :current-task-id="taskStore.currentTaskId"
       @new-task="taskStore.createNewTask"
       @switch-task="taskStore.switchTask"
+      @delete-task="handleDeleteTask"
     />
 
     <div class="main-workspace">
       <TopHeader :username="username" :user-role="userRole" @logout="$emit('logout')" />
       <ConfigSwitcher :username="username" :user-role="userRole" />
 
-      <div v-if="taskStore.pendingCount > 0" class="queue-status">
+      <div class="queue-status">
         当前排队任务: {{ taskStore.pendingCount }} 个
       </div>
 
@@ -75,6 +76,14 @@ const handleCancel = async () => {
 const handleResume = async () => {
   if (taskStore.currentTaskId) {
     await taskStore.resumeTask(taskStore.currentTaskId)
+  }
+}
+
+const handleDeleteTask = async (taskId) => {
+  try {
+    await taskStore.deleteTask(taskId, props.username)
+  } catch (err) {
+    alert(err.message || '删除失败')
   }
 }
 </script>

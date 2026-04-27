@@ -26,6 +26,7 @@
         v-model="originalText"
         placeholder="请在此粘贴需要润色的长篇文本..."
       ></textarea>
+      <div class="char-count">字数: {{ originalText.length }}</div>
     </div>
 
     <div class="bottom-control-bar">
@@ -103,6 +104,7 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
+import { useTaskStore } from '../stores/taskStore'
 import { taskAPI } from '../api'
 import ErrorToast from './ErrorToast.vue'
 
@@ -111,6 +113,8 @@ const props = defineProps({
   currentTask: Object,
   strategies: Array
 })
+
+const taskStore = useTaskStore()
 
 const emit = defineEmits(['task-created', 'cancel', 'resume'])
 
@@ -162,8 +166,17 @@ const handlePolish = async () => {
       if (!userConfirm) return
     }
 
+    if (text.length > 1500) {
+      const confirmLong = confirm(
+        `当前文本共 ${text.length} 字符，属于长文本。\n` +
+        `长文本将自动切片并发处理，耗时可能较长。\n\n` +
+        `是否继续提交？`
+      )
+      if (!confirmLong) return
+    }
+
     isProcessing.value = true
-    const taskId = await taskAPI.createTask(
+    const taskId = await taskStore.createTask(
       props.username,
       text,
       mode.value,
@@ -187,7 +200,7 @@ const handleFileChange = async (event) => {
 
   try {
     isProcessing.value = true
-    const taskId = await taskAPI.uploadDocx(
+    const taskId = await taskStore.uploadDocx(
       props.username,
       file,
       mode.value,
@@ -206,3 +219,8 @@ const handleFileChange = async (event) => {
   }
 }
 </script>
+
+<style scoped>
+.char-count { position: absolute; bottom: 8px; right: 12px; font-size: 12px; color: #94a3b8; pointer-events: none; }
+.content-area { position: relative; }
+</style>

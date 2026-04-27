@@ -100,25 +100,36 @@ def upload_docx():
 def stream_results(task_id):
     """SSE流式推送任务结果"""
     def generate():
+        from backend.model.models import Task
+        import time
+
         pubsub = redis_client.pubsub()
         channel_name = f"stream:task:{task_id}"
         pubsub.subscribe(channel_name)
 
         try:
-            # 发送初始连接消息
             initial_payload = json.dumps({
                 'type': 'block',
                 'content': '⏳ 已连接到推送通道，等待 AI 响应...\n\n'
             })
             yield f"data: {initial_payload}\n\n"
 
-            # 添加超时机制
-            import time
+            task = Task.query.get(task_id)
+            if task and task.status == 'completed' and task.polished_text:
+                done_payload = json.dumps({'type': 'stream', 'content': task.polished_text})
+                yield f"data: {done_payload}\n\n"
+                finish_payload = json.dumps({'type': 'done', 'content': '完成'})
+                yield f"data: {finish_payload}\n\n"
+                return
+            if task and task.status == 'failed':
+                err_payload = json.dumps({'type': 'fatal', 'content': '任务处理失败'})
+                yield f"data: {err_payload}\n\n"
+                return
+
             last_message_time = time.time()
-            timeout = 600  # 10分钟超时
+            timeout = 600
 
             for message in pubsub.listen():
-                # 检查超时
                 if time.time() - last_message_time > timeout:
                     error_payload = json.dumps({
                         'type': 'fatal',
@@ -216,6 +227,25 @@ def download_docx(task_id):
         as_attachment=True,
         download_name=f"Polished_{task.title}.docx"
     )
+
+
+@task_bp.route('/<int:task_id>/delete', methods=['POST'])
+def delete_task(task_id):
+    """删除任务"""
+    data = request.json
+    username = data.get('username')
+
+    try:
+        user = user_service.authenticate_user(username)
+    except ValueError:
+        return jsonify({"error": "无权操作"}), 403
+
+    try:
+        result = task_service.delete_task(task_id, user.id)
+        logger.info(f"用户 {username} 删除任务: {task_id}")
+        return jsonify(result), 200
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
 
 
 @task_bp.route('/queue_status', methods=['GET'])

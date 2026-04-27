@@ -45,7 +45,7 @@ class Config:
 class WorkerConfig:
     """Worker任务处理配置"""
     MAX_WORKERS = int(os.environ.get('MAX_AI_WORKERS', 32))
-    TEXT_CHUNK_SIZE = int(os.environ.get('TEXT_CHUNK_SIZE', 600))
+    TEXT_CHUNK_SIZE = int(os.environ.get('TEXT_CHUNK_SIZE', 1500))
     RETRY_TIMES = int(os.environ.get('RETRY_TIMES', 3))
     RETRY_DELAY_BASE = int(os.environ.get('RETRY_DELAY_BASE', 2))  # 指数退避基数
 
