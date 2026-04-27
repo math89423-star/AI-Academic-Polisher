@@ -8,6 +8,7 @@ from backend.services.user_service import UserService
 from backend.services.api_config_service import ApiConfigService
 from backend.utils.decorators import require_admin
 from backend.utils.logging_config import get_logger
+import asyncio
 
 admin_bp = Blueprint('admin', __name__)
 user_service = UserService()
@@ -31,7 +32,8 @@ def list_users():
         "usage_count": u.usage_count,
         "api_config_id": u.api_config_id,
         "api_config_id_standard": u.api_config_id_standard,
-        "api_config_id_strict": u.api_config_id_strict
+        "api_config_id_strict": u.api_config_id_strict,
+        "can_use_strict": u.can_use_strict
     } for u in users])
 
 
@@ -92,6 +94,26 @@ def delete_user(target_username):
         return jsonify({"error": str(e)}), 404
 
 
+@admin_bp.route('/users/update_strict_permission', methods=['POST'])
+@require_admin
+def update_strict_permission():
+    """更新用户极致模式权限"""
+    data = request.json
+    target_username = data.get('target_username')
+    can_use_strict = data.get('can_use_strict', False)
+
+    from backend.model.models import User
+    user = User.query.filter_by(username=target_username).first()
+    if not user:
+        return jsonify({"error": "用户不存在"}), 404
+
+    user.can_use_strict = can_use_strict
+    from backend.extensions import db
+    db.session.commit()
+    logger.info(f"更新用户 {target_username} 极致模式权限: {can_use_strict}")
+    return jsonify({"message": "权限更新成功"}), 200
+
+
 # === API 渠道管理 ===
 
 @admin_bp.route('/api_configs', methods=['GET'])
@@ -113,7 +135,8 @@ def add_api_config():
             name=data.get('name', ''),
             api_key=data.get('api_key', ''),
             base_url=data.get('base_url', ''),
-            model_name=data.get('model_name', 'gpt-3.5-turbo')
+            model_name=data.get('model_name', 'gpt-3.5-turbo'),
+            api_type=data.get('api_type', 'proxy')
         )
 
         logger.info(f"管理员创建API配置: {config.name}")
@@ -121,6 +144,30 @@ def add_api_config():
 
     except ValueError as e:
         logger.warning(f"创建API配置失败: {str(e)}")
+        return jsonify({"error": str(e)}), 400
+
+
+@admin_bp.route('/api_configs/<int:config_id>', methods=['PUT'])
+@require_admin
+def update_api_config(config_id):
+    """更新API配置"""
+    data = request.json
+
+    try:
+        config = api_config_service.update_config(
+            config_id=config_id,
+            name=data.get('name', ''),
+            api_key=data.get('api_key', ''),
+            base_url=data.get('base_url', ''),
+            model_name=data.get('model_name', ''),
+            api_type=data.get('api_type', 'proxy')
+        )
+
+        logger.info(f"管理员更新API配置: {config.name}")
+        return jsonify({"message": "配置更新成功"}), 200
+
+    except ValueError as e:
+        logger.warning(f"更新API配置失败: {str(e)}")
         return jsonify({"error": str(e)}), 400
 
 
@@ -168,3 +215,25 @@ def batch_update_user_config():
     except Exception as e:
         logger.error(f"批量更新失败: {str(e)}")
         return jsonify({"error": str(e)}), 500
+
+
+@admin_bp.route('/api_configs/test', methods=['POST'])
+@require_admin
+def test_api_config():
+    """测试API配置连接"""
+    data = request.json
+
+    try:
+        result = asyncio.run(api_config_service.test_api_connection(
+            api_key=data.get('api_key', ''),
+            base_url=data.get('base_url', ''),
+            model_name=data.get('model_name', ''),
+            api_type=data.get('api_type', 'proxy')
+        ))
+
+        logger.info(f"API连接测试: {result['message']}")
+        return jsonify(result), 200
+
+    except Exception as e:
+        logger.error(f"API连接测试失败: {str(e)}")
+        return jsonify({"success": False, "message": f"测试异常: {str(e)}"}), 500

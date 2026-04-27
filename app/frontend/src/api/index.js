@@ -23,8 +23,9 @@ export const taskAPI = {
     return res.json()
   },
 
-  async getStrategies() {
-    const res = await fetch(`${API_BASE}/tasks/strategies`)
+  async getStrategies(username) {
+    const params = username ? `?username=${username}` : ''
+    const res = await fetch(`${API_BASE}/tasks/strategies${params}`)
     if (!res.ok) throw new Error('获取策略失败')
     return res.json()
   },
@@ -83,6 +84,12 @@ export const taskAPI = {
       method: 'POST'
     })
     if (!res.ok) throw new Error('恢复任务失败')
+    return res.json()
+  },
+
+  async getQueueStatus() {
+    const res = await fetch(`${API_BASE}/tasks/queue_status`)
+    if (!res.ok) return { pending_count: 0 }
     return res.json()
   },
 

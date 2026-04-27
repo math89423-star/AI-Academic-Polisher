@@ -7,7 +7,7 @@ from flask import Blueprint, request, jsonify, Response, send_file
 from backend.services.task_service import TaskService
 from backend.services.user_service import UserService
 from backend.utils.text_hash import check_duplicate_text
-from backend.extensions import redis_client
+from backend.extensions import redis_client, task_queue
 from backend.utils.logging_config import get_logger
 import os
 import json
@@ -218,20 +218,32 @@ def download_docx(task_id):
     )
 
 
+@task_bp.route('/queue_status', methods=['GET'])
+def queue_status():
+    """获取当前排队任务数"""
+    pending = len(task_queue)
+    return jsonify({"pending_count": pending}), 200
+
+
 @task_bp.route('/strategies', methods=['GET'])
 def get_strategies():
-    """获取可用策略列表"""
+    """获取可用策略列表（根据用户权限过滤）"""
     from backend.prompts_config import STRATEGIES
+    from backend.model.models import User
+
+    username = request.args.get('username', '')
+    user = User.query.filter_by(username=username).first() if username else None
 
     result = []
     for key, value in STRATEGIES.items():
+        if key == 'strict' and user and not user.can_use_strict and user.role != 'admin':
+            continue
         result.append({
             "id": key,
             "name": value.get("name", key),
             "color": value.get("color", "#334155")
         })
 
-    # 为了保证界面显示的稳定性，强制让 standard 排在第一位
     result.sort(key=lambda x: 0 if x['id'] == 'standard' else 1)
 
     return jsonify(result), 200

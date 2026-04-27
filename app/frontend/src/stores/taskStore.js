@@ -7,6 +7,8 @@ export const useTaskStore = defineStore('task', () => {
   const currentTaskId = ref(null)
   const strategies = ref([])
   const eventSource = ref(null)
+  const pendingCount = ref(0)
+  let queuePollTimer = null
 
   const currentTask = computed(() => {
     return currentTaskId.value ? tasks.value[currentTaskId.value] : null
@@ -41,9 +43,9 @@ export const useTaskStore = defineStore('task', () => {
     }
   }
 
-  async function loadStrategies() {
+  async function loadStrategies(username) {
     try {
-      const data = await taskAPI.getStrategies()
+      const data = await taskAPI.getStrategies(username)
       strategies.value = data
     } catch (err) {
       console.error('加载策略失败:', err)
@@ -163,12 +165,32 @@ export const useTaskStore = defineStore('task', () => {
     startSSE(taskId)
   }
 
+  async function fetchQueueStatus() {
+    try {
+      const data = await taskAPI.getQueueStatus()
+      pendingCount.value = data.pending_count
+    } catch (e) { /* ignore */ }
+  }
+
+  function startQueuePolling() {
+    fetchQueueStatus()
+    queuePollTimer = setInterval(fetchQueueStatus, 10000)
+  }
+
+  function stopQueuePolling() {
+    if (queuePollTimer) {
+      clearInterval(queuePollTimer)
+      queuePollTimer = null
+    }
+  }
+
   return {
     tasks,
     currentTaskId,
     currentTask,
     sortedTasks,
     strategies,
+    pendingCount,
     loadHistory,
     loadStrategies,
     switchTask,
@@ -178,6 +200,8 @@ export const useTaskStore = defineStore('task', () => {
     startSSE,
     stopSSE,
     cancelTask,
-    resumeTask
+    resumeTask,
+    startQueuePolling,
+    stopQueuePolling
   }
 })
