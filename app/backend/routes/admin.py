@@ -14,9 +14,13 @@ import json
 import os
 
 admin_bp = Blueprint('admin', __name__)
-user_service = UserService()
-api_config_service = ApiConfigService()
 logger = get_logger(__name__)
+
+def _user_service():
+    return UserService()
+
+def _api_config_service():
+    return ApiConfigService()
 
 
 # === 用户管理 ===
@@ -47,7 +51,7 @@ def add_user():
     data = request.json
 
     try:
-        user = user_service.create_user(
+        user = _user_service().create_user(
             username=data['new_username'],
             role=data.get('role', 'user'),
             password=data.get('password'),
@@ -69,7 +73,7 @@ def update_user_api_config():
     data = request.json
 
     try:
-        user = user_service.update_user_api_config(
+        user = _user_service().update_user_api_config(
             username=data['target_username'],
             mode=data.get('mode', 'legacy'),
             api_config_id=data.get('api_config_id')
@@ -88,7 +92,7 @@ def update_user_api_config():
 def delete_user(target_username):
     """删除用户"""
     try:
-        result = user_service.delete_user(target_username)
+        result = _user_service().delete_user(target_username)
         logger.info(f"管理员删除用户: {target_username}")
         return jsonify(result), 200
 
@@ -123,7 +127,7 @@ def update_strict_permission():
 @require_admin
 def list_api_configs():
     """获取所有API配置"""
-    configs = api_config_service.get_all_configs()
+    configs = _api_config_service().get_all_configs()
     return jsonify(configs), 200
 
 
@@ -134,7 +138,7 @@ def add_api_config():
     data = request.json
 
     try:
-        config = api_config_service.create_config(
+        config = _api_config_service().create_config(
             name=data.get('name', ''),
             api_key=data.get('api_key', ''),
             base_url=data.get('base_url', ''),
@@ -157,7 +161,7 @@ def update_api_config(config_id):
     data = request.json
 
     try:
-        config = api_config_service.update_config(
+        config = _api_config_service().update_config(
             config_id=config_id,
             name=data.get('name', ''),
             api_key=data.get('api_key', ''),
@@ -179,7 +183,7 @@ def update_api_config(config_id):
 def delete_api_config(config_id):
     """删除API配置"""
     try:
-        result = api_config_service.delete_config(config_id)
+        result = _api_config_service().delete_config(config_id)
         logger.info(f"管理员删除API配置: {config_id}")
         return jsonify(result), 200
 
@@ -206,7 +210,7 @@ def batch_update_user_config():
         users = User.query.filter(User.username.in_(usernames)).all()
 
         for user in users:
-            user_service.update_user_api_config(
+            _user_service().update_user_api_config(
                 username=user.username,
                 mode=mode,
                 api_config_id=api_config_id
@@ -227,7 +231,7 @@ def test_api_config():
     data = request.json
 
     try:
-        result = asyncio.run(api_config_service.test_api_connection(
+        result = asyncio.run(_api_config_service().test_api_connection(
             api_key=data.get('api_key', ''),
             base_url=data.get('base_url', ''),
             model_name=data.get('model_name', ''),

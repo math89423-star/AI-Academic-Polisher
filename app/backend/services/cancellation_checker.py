@@ -3,7 +3,7 @@
 
 负责检测和处理任务取消信号
 """
-from backend.config import RedisConfig
+from backend.config import RedisKeyManager
 from backend.utils.logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -22,7 +22,7 @@ class CancellationChecker:
         """
         self.redis = redis_client
         self.task_id = task_id
-        self.cancel_key = f"{RedisConfig.CANCEL_KEY_PREFIX}{task_id}"
+        self.cancel_key = RedisKeyManager.cancel_key(task_id)
 
     def is_cancelled(self) -> bool:
         """

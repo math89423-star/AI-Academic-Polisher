@@ -4,6 +4,7 @@
 负责任务的创建、取消、恢复等业务逻辑
 """
 from backend.extensions import db, redis_client, task_queue
+from backend.config import RedisKeyManager
 from backend.model.models import Task, User
 from backend.utils.helpers import extract_title
 from backend.utils.text_hash import store_text_hash
@@ -14,10 +15,10 @@ from werkzeug.utils import secure_filename
 class TaskService:
     """任务服务"""
 
-    def __init__(self, db_session=None, redis_client=None, task_queue=None):
+    def __init__(self, db_session=None, redis=None, queue=None):
         self.db = db_session or db
-        self.redis = redis_client or globals()['redis_client']
-        self.queue = task_queue or globals()['task_queue']
+        self.redis = redis or redis_client
+        self.queue = queue or task_queue
 
     def create_text_task(self, user: User, text: str, mode: str, strategy: str) -> Task:
         """
@@ -140,11 +141,10 @@ class TaskService:
         self.db.session.commit()
 
         # 给 Redis 写一个"取消令"标记
-        cancel_key = f"cancel:task:{task_id}"
+        cancel_key = RedisKeyManager.cancel_key(task_id)
         self.redis.setex(cancel_key, 3600, "1")
 
-        # 广播中断信号
-        channel_name = f"stream:task:{task_id}"
+        channel_name = RedisKeyManager.stream_channel(task_id)
         import json
         payload = json.dumps({"type": "fatal", "content": "用户主动终止了任务"})
         self.redis.publish(channel_name, f"data: {payload}\n\n")

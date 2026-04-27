@@ -6,8 +6,8 @@
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from backend.processors.base_processor import BaseTaskProcessor
 from backend.utils.helpers import split_text_into_chunks
-from backend.config import WorkerConfig, RedisConfig
-from backend.extensions import redis_client, db
+from backend.config import WorkerConfig, RedisKeyManager
+from backend.extensions import db
 from backend.utils.logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -96,10 +96,10 @@ class TextTaskProcessor(BaseTaskProcessor):
         """处理长文本（并发处理）"""
         logger.info(f"任务 {self.task_id} 使用并发处理 ({WorkerConfig.MAX_WORKERS} 线程)")
 
-        progress_key = f"{RedisConfig.PROGRESS_KEY_PREFIX}{self.task_id}"
+        progress_key = RedisKeyManager.progress_key(self.task_id)
 
         # 从Redis恢复已完成的片段
-        raw_done = redis_client.hgetall(progress_key)
+        raw_done = self.redis_client.hgetall(progress_key)
         done_dict = {int(k): v for k, v in raw_done.items()} if raw_done else {}
 
         # 找出未完成的片段
@@ -138,7 +138,7 @@ class TextTaskProcessor(BaseTaskProcessor):
                             polished_chunk = original_chunk
 
                         done_dict[idx] = polished_chunk
-                        redis_client.hset(progress_key, str(idx), polished_chunk)
+                        self.redis_client.hset(progress_key, str(idx), polished_chunk)
 
                         completed_count += 1
 
@@ -166,7 +166,7 @@ class TextTaskProcessor(BaseTaskProcessor):
         self.progress_publisher.publish_stream(final_text)
 
         # 清理Redis缓存
-        redis_client.delete(progress_key)
+        self.redis_client.delete(progress_key)
 
     def _process_single_chunk(self, chunk_idx: int, text_content: str) -> str:
         """
@@ -199,5 +199,5 @@ class TextTaskProcessor(BaseTaskProcessor):
         """清理资源"""
         super().cleanup()
         # 清理进度缓存
-        progress_key = f"{RedisConfig.PROGRESS_KEY_PREFIX}{self.task_id}"
-        redis_client.delete(progress_key)
+        progress_key = RedisKeyManager.progress_key(self.task_id)
+        self.redis_client.delete(progress_key)

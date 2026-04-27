@@ -9,8 +9,8 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from backend.processors.base_processor import BaseTaskProcessor
 from backend.utils.docx_service import is_paragraph_needs_polishing, replace_paragraph_text, check_stop_signal
 from backend.utils.helpers import split_text_into_chunks
-from backend.config import WorkerConfig, RedisConfig
-from backend.extensions import redis_client, db
+from backend.config import WorkerConfig, RedisKeyManager
+from backend.extensions import db
 from backend.utils.logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -25,10 +25,10 @@ class DocxTaskProcessor(BaseTaskProcessor):
 
     def process(self):
         """处理文档任务"""
-        done_indices_key = f"{RedisConfig.DOCX_DONE_PREFIX}{self.task_id}"
+        done_indices_key = RedisKeyManager.docx_done_key(self.task_id)
 
         # 从Redis恢复已完成的段落索引
-        raw_done = redis_client.smembers(done_indices_key)
+        raw_done = self.redis_client.smembers(done_indices_key)
         done_indices = {int(x) for x in raw_done} if raw_done else set()
 
         # 加载文档（如果有中间结果，加载中间结果）
@@ -62,8 +62,8 @@ class DocxTaskProcessor(BaseTaskProcessor):
         self._save_document()
 
         # 清理Redis缓存
-        redis_client.delete(done_indices_key)
-        redis_client.delete(f"docx_progress:task:{self.task_id}")
+        self.redis_client.delete(done_indices_key)
+        self.redis_client.delete(RedisKeyManager.docx_progress_key(self.task_id))
 
         self.progress_publisher.publish_block("\n\n🎉 全局高并发重排完毕，正在生成下载链接...\n")
 
@@ -140,7 +140,7 @@ class DocxTaskProcessor(BaseTaskProcessor):
                     completed_count += 1
 
                     # 记录到Redis
-                    redis_client.sadd(done_indices_key, idx)
+                    self.redis_client.sadd(done_indices_key, idx)
 
                     # 推送进度
                     progress = int((completed_count / total_paras) * 100)
@@ -239,6 +239,6 @@ class DocxTaskProcessor(BaseTaskProcessor):
         """清理资源"""
         super().cleanup()
         # 清理进度缓存
-        done_indices_key = f"{RedisConfig.DOCX_DONE_PREFIX}{self.task_id}"
-        redis_client.delete(done_indices_key)
-        redis_client.delete(f"docx_progress:task:{self.task_id}")
+        done_indices_key = RedisKeyManager.docx_done_key(self.task_id)
+        self.redis_client.delete(done_indices_key)
+        self.redis_client.delete(RedisKeyManager.docx_progress_key(self.task_id))

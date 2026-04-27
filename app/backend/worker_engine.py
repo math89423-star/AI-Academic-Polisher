@@ -3,7 +3,7 @@
 
 使用处理器模式，职责更加清晰
 """
-from backend.extensions import db
+from backend.extensions import db, redis_client
 from backend import create_app
 from backend.model.models import Task
 from backend.processors.text_processor import TextTaskProcessor
@@ -68,8 +68,8 @@ def _get_processor(task):
     task_type = getattr(task, 'task_type', 'text')
 
     if task_type == 'text':
-        return TextTaskProcessor(task)
+        return TextTaskProcessor(task, redis_client)
     elif task_type == 'docx':
-        return DocxTaskProcessor(task)
+        return DocxTaskProcessor(task, redis_client)
     else:
         return None

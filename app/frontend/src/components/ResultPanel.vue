@@ -96,6 +96,12 @@ watch(isWaiting, (waiting) => {
   else stopTimer()
 }, { immediate: true })
 
+watch(() => props.currentTask?.status, (status) => {
+  if (status && !['queued', 'processing'].includes(status)) {
+    stopTimer()
+  }
+})
+
 watch(() => props.currentTask?.id, () => {
   stopTimer()
   elapsedSeconds.value = calcElapsedFromServer()

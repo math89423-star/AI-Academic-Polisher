@@ -7,15 +7,20 @@ from flask import Blueprint, request, jsonify, Response, send_file
 from backend.services.task_service import TaskService
 from backend.services.user_service import UserService
 from backend.utils.text_hash import check_duplicate_text
+from backend.config import RedisKeyManager
 from backend.extensions import redis_client, task_queue
 from backend.utils.logging_config import get_logger
 import os
 import json
 
 task_bp = Blueprint('task', __name__)
-task_service = TaskService()
-user_service = UserService()
 logger = get_logger(__name__)
+
+def _task_service():
+    return TaskService()
+
+def _user_service():
+    return UserService()
 
 
 @task_bp.route('/check_duplicate', methods=['POST'])
@@ -26,7 +31,7 @@ def check_duplicate():
     text = data.get('text', '').strip()
 
     try:
-        user = user_service.authenticate_user(username)
+        user = _user_service().authenticate_user(username)
     except ValueError:
         return jsonify({"error": "无效用户"}), 401
 
@@ -49,7 +54,7 @@ def create_task():
 
     # 验证用户
     try:
-        user = user_service.authenticate_user(username)
+        user = _user_service().authenticate_user(username)
     except ValueError as e:
         return jsonify({"error": str(e)}), 401
 
@@ -59,7 +64,7 @@ def create_task():
 
     # 创建任务
     try:
-        task = task_service.create_text_task(user, original_text, mode, strategy)
+        task = _task_service().create_text_task(user, original_text, mode, strategy)
         logger.info(f"用户 {username} 创建文本任务: {task.id}")
         return jsonify({"task_id": task.id, "title": task.title}), 201
 
@@ -81,13 +86,13 @@ def upload_docx():
 
     # 验证用户
     try:
-        user = user_service.authenticate_user(username)
+        user = _user_service().authenticate_user(username)
     except ValueError as e:
         return jsonify({"error": str(e)}), 403
 
     # 创建文档任务
     try:
-        task = task_service.create_docx_task(user, file, mode, strategy)
+        task = _task_service().create_docx_task(user, file, mode, strategy)
         logger.info(f"用户 {username} 上传文档任务: {task.id}")
         return jsonify({"task_id": task.id, "title": task.title}), 201
 
@@ -105,7 +110,7 @@ def stream_results(task_id):
         import time
 
         pubsub = redis_client.pubsub()
-        channel_name = f"stream:task:{task_id}"
+        channel_name = RedisKeyManager.stream_channel(task_id)
         pubsub.subscribe(channel_name)
 
         try:
@@ -167,11 +172,11 @@ def get_history():
     username = request.args.get('username', '').strip()
 
     try:
-        user = user_service.authenticate_user(username)
+        user = _user_service().authenticate_user(username)
     except ValueError:
         return jsonify({"error": "无权访问"}), 401
 
-    tasks = task_service.get_user_tasks(user.id, limit=50)
+    tasks = _task_service().get_user_tasks(user.id, limit=50)
     return jsonify(tasks), 200
 
 
@@ -182,12 +187,12 @@ def cancel_task(task_id):
     username = data.get('username')
 
     try:
-        user = user_service.authenticate_user(username)
+        user = _user_service().authenticate_user(username)
     except ValueError:
         return jsonify({"error": "无权操作"}), 403
 
     try:
-        result = task_service.cancel_task(task_id, user.id)
+        result = _task_service().cancel_task(task_id, user.id)
         logger.info(f"用户 {username} 取消任务: {task_id}")
         return jsonify(result), 200
 
@@ -202,12 +207,12 @@ def resume_task(task_id):
     username = data.get('username')
 
     try:
-        user = user_service.authenticate_user(username)
+        user = _user_service().authenticate_user(username)
     except ValueError:
         return jsonify({"error": "无权操作"}), 403
 
     try:
-        result = task_service.resume_task(task_id, user.id)
+        result = _task_service().resume_task(task_id, user.id)
         logger.info(f"用户 {username} 恢复任务: {task_id}")
         return jsonify(result), 200
 
@@ -244,12 +249,12 @@ def delete_task(task_id):
     username = data.get('username')
 
     try:
-        user = user_service.authenticate_user(username)
+        user = _user_service().authenticate_user(username)
     except ValueError:
         return jsonify({"error": "无权操作"}), 403
 
     try:
-        result = task_service.delete_task(task_id, user.id)
+        result = _task_service().delete_task(task_id, user.id)
         logger.info(f"用户 {username} 删除任务: {task_id}")
         return jsonify(result), 200
     except ValueError as e:

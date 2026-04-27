@@ -1,14 +1,16 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { taskAPI } from '../api'
+import { createSSEManager } from './sseManager'
 
 export const useTaskStore = defineStore('task', () => {
   const tasks = ref({})
   const currentTaskId = ref(null)
   const strategies = ref([])
-  const eventSource = ref(null)
   const pendingCount = ref(0)
   let queuePollTimer = null
+
+  const sse = createSSEManager()
 
   const currentTask = computed(() => {
     return currentTaskId.value ? tasks.value[currentTaskId.value] : null
@@ -97,46 +99,38 @@ export const useTaskStore = defineStore('task', () => {
     return data.task_id
   }
 
-  function startSSE(taskId) {
-    if (eventSource.value) {
-      eventSource.value.close()
+  function _handleSSEEvent(taskId, data) {
+    const task = tasks.value[taskId]
+    if (!task) return
+
+    if (data.type === 'status') {
+      const c = data.content || {}
+      task.status = c.status || data.status
+      task.serverInfo = c.message || data.message || ''
+    } else if (data.type === 'chunk' || data.type === 'stream') {
+      task.polished += (typeof data.content === 'string' ? data.content : '')
+    } else if (data.type === 'block') {
+      task.serverInfo = typeof data.content === 'string' ? data.content : ''
+    } else if (data.type === 'progress') {
+      task.serverInfo = `处理中 ${data.content}%`
+    } else if (data.type === 'done') {
+      task.status = 'completed'
+      const c = data.content || {}
+      task.downloadUrl = (typeof c === 'object' ? c.download_url : '') || ''
+      task.serverInfo = ''
+      sse.stop()
+    } else if (data.type === 'error' || data.type === 'fatal') {
+      task.status = 'failed'
+      task.serverInfo = (typeof data.content === 'string' ? data.content : data.message) || '处理失败'
+      sse.stop()
     }
+  }
 
-    eventSource.value = taskAPI.connectSSE(
+  function startSSE(taskId) {
+    sse.start(
       taskId,
-      (data) => {
-        const task = tasks.value[taskId]
-        if (!task) return
-
-        if (data.type === 'status') {
-          const c = data.content || {}
-          task.status = c.status || data.status
-          task.serverInfo = c.message || data.message || ''
-        } else if (data.type === 'chunk' || data.type === 'stream') {
-          task.polished += (typeof data.content === 'string' ? data.content : '')
-        } else if (data.type === 'block') {
-          task.serverInfo = typeof data.content === 'string' ? data.content : ''
-        } else if (data.type === 'progress') {
-          task.serverInfo = `处理中 ${data.content}%`
-        } else if (data.type === 'done') {
-          task.status = 'completed'
-          const c = data.content || {}
-          task.downloadUrl = (typeof c === 'object' ? c.download_url : '') || ''
-          if (eventSource.value) {
-            eventSource.value.close()
-            eventSource.value = null
-          }
-        } else if (data.type === 'error' || data.type === 'fatal') {
-          task.status = 'failed'
-          task.serverInfo = (typeof data.content === 'string' ? data.content : data.message) || '处理失败'
-          if (eventSource.value) {
-            eventSource.value.close()
-            eventSource.value = null
-          }
-        }
-      },
+      (data) => _handleSSEEvent(taskId, data),
       (err) => {
-        console.error('SSE error:', err)
         const task = tasks.value[taskId]
         if (task && task.status === 'processing') {
           task.serverInfo = '连接中断'
@@ -146,10 +140,7 @@ export const useTaskStore = defineStore('task', () => {
   }
 
   function stopSSE() {
-    if (eventSource.value) {
-      eventSource.value.close()
-      eventSource.value = null
-    }
+    sse.stop()
   }
 
   async function cancelTask(taskId) {

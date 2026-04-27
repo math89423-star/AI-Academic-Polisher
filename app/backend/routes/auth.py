@@ -10,8 +10,10 @@ from backend.utils.logging_config import get_logger
 import json
 
 auth_bp = Blueprint('auth', __name__)
-user_service = UserService()
 logger = get_logger(__name__)
+
+def _user_service():
+    return UserService()
 
 
 @auth_bp.route('/login/user', methods=['POST'])
@@ -24,7 +26,7 @@ def user_login():
         return jsonify({"error": "用户名不能为空"}), 400
 
     try:
-        user = user_service.authenticate_user(username)
+        user = _user_service().authenticate_user(username)
         logger.info(f"用户登录成功: {username}")
         return jsonify({"message": "登录成功", "username": user.username, "role": user.role}), 200
 
@@ -44,7 +46,7 @@ def admin_login():
         return jsonify({"error": "用户名和密码不能为空"}), 400
 
     try:
-        admin = user_service.authenticate_admin(username, password)
+        admin = _user_service().authenticate_admin(username, password)
         logger.info(f"管理员登录成功: {username}")
         return jsonify({"message": "管理员登录成功", "username": admin.username, "role": admin.role}), 200
 

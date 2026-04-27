@@ -58,9 +58,29 @@ class SSEConfig:
 
 class RedisConfig:
     """Redis缓存配置"""
-    CANCEL_KEY_TTL = int(os.environ.get('CANCEL_KEY_TTL', 3600))  # 取消信号过期时间
-    TEXT_HASH_TTL = int(os.environ.get('TEXT_HASH_TTL', 24))  # 文本哈希过期时间（小时）
-    PROGRESS_KEY_PREFIX = 'text_progress:task:'
-    DOCX_DONE_PREFIX = 'docx_done_indices:task:'
-    CANCEL_KEY_PREFIX = 'cancel:task:'
-    STREAM_CHANNEL_PREFIX = 'stream:task:'
+    CANCEL_KEY_TTL = int(os.environ.get('CANCEL_KEY_TTL', 3600))
+    TEXT_HASH_TTL = int(os.environ.get('TEXT_HASH_TTL', 24))
+
+
+class RedisKeyManager:
+    """统一管理所有 Redis key 的生成，避免硬编码散落各处"""
+
+    @staticmethod
+    def cancel_key(task_id) -> str:
+        return f"cancel:task:{task_id}"
+
+    @staticmethod
+    def stream_channel(task_id) -> str:
+        return f"stream:task:{task_id}"
+
+    @staticmethod
+    def progress_key(task_id) -> str:
+        return f"text_progress:task:{task_id}"
+
+    @staticmethod
+    def docx_done_key(task_id) -> str:
+        return f"docx_done_indices:task:{task_id}"
+
+    @staticmethod
+    def docx_progress_key(task_id) -> str:
+        return f"docx_progress:task:{task_id}"

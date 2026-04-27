@@ -4,7 +4,7 @@
 负责向Redis Pub/Sub推送任务进度消息
 """
 import json
-from backend.config import RedisConfig
+from backend.config import RedisKeyManager
 from backend.utils.logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -23,7 +23,7 @@ class ProgressPublisher:
         """
         self.redis = redis_client
         self.task_id = task_id
-        self.channel_name = f"{RedisConfig.STREAM_CHANNEL_PREFIX}{task_id}"
+        self.channel_name = RedisKeyManager.stream_channel(task_id)
 
     def publish_message(self, msg_type: str, content):
         """

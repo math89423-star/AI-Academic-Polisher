@@ -21,6 +21,7 @@ class ResponseExtractor:
     def extract_clean_text(self, raw_text: str) -> str:
         """
         从混合文本中提取纯净正文（同步版本）
+        优化：先用正则提取，仅在正则失败时回退到 AI
 
         Args:
             raw_text: 原始混合文本
@@ -31,7 +32,18 @@ class ResponseExtractor:
         # 基础清洗：去除<think>标签
         basic_clean_text = re.sub(r'<think>.*?</think>', '', raw_text, flags=re.DOTALL | re.IGNORECASE).strip()
 
-        # 使用AI提取器进行二次提取
+        # 正则提取：去除常见前缀和包裹
+        cleaned = basic_clean_text
+        cleaned = re.sub(r'^(润色结果|结果|输出|Output|Result)[:：]\s*', '', cleaned, flags=re.IGNORECASE)
+        cleaned = re.sub(r'^```[\w]*\n', '', cleaned)
+        cleaned = re.sub(r'\n```$', '', cleaned)
+        cleaned = cleaned.strip()
+
+        # 如果正则清洗后文本合理（长度 > 10 且不为空），直接返回
+        if cleaned and len(cleaned) > 10:
+            return cleaned
+
+        # 降级：使用AI提取器进行二次提取
         try:
             extractor_prompt = self.prompt_builder.build_simple_extractor_prompt()
             messages = [
@@ -47,7 +59,6 @@ class ResponseExtractor:
 
             final_text = (response.choices[0].message.content or "").strip()
 
-            # 降级保护：如果提取器返回空，使用基础清洗文本
             if not final_text:
                 logger.warning("提取器返回空值，启用降级保护，使用基础清洗文本")
                 return basic_clean_text

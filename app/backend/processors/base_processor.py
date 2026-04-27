@@ -8,7 +8,7 @@ from backend.services.progress_publisher import ProgressPublisher
 from backend.services.cancellation_checker import CancellationChecker
 from backend.services.ai_service_refactored import AIService
 from backend.services.api_config_service import ApiConfigService
-from backend.extensions import db, redis_client
+from backend.extensions import db
 from backend.utils.logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -17,15 +17,10 @@ logger = get_logger(__name__)
 class BaseTaskProcessor(ABC):
     """任务处理器基类"""
 
-    def __init__(self, task):
-        """
-        初始化任务处理器
-
-        Args:
-            task: 任务对象
-        """
+    def __init__(self, task, redis_client):
         self.task = task
         self.task_id = task.id
+        self.redis_client = redis_client
         self.progress_publisher = ProgressPublisher(redis_client, task.id)
         self.cancellation_checker = CancellationChecker(redis_client, task.id)
         self.ai_service = None
