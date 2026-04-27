@@ -30,10 +30,9 @@ echo "------------------------------------------"
 echo "🚀 AI 极速学术润色系统 - 后端服务启动中..."
 echo "------------------------------------------"
 
-if [ -f .env ]; then
-    REDIS_URL=$(grep REDIS_URL .env | cut -d '=' -f2- | tr -d '\r')
-else
-    echo "❌ 错误: 找不到 .env 文件，请确保已将其映射入容器中。"
+# .env 文件通过 docker-compose 的 env_file 注入，直接从环境变量读取
+if [ -z "$REDIS_URL" ]; then
+    echo "❌ 错误: 未找到 REDIS_URL 环境变量"
     exit 1
 fi
 
