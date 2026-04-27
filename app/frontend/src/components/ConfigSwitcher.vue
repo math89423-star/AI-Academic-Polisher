@@ -33,7 +33,7 @@ const switchMsg = ref('')
 
 const loadConfigs = async () => {
   try {
-    const res = await fetch('/api/admin/api_configs')
+    const res = await fetch(`/api/admin/api_configs?admin_username=${props.username}`)
     if (res.ok) configs.value = await res.json()
   } catch (e) { /* ignore */ }
 }
@@ -59,7 +59,9 @@ const switchConfig = async (mode, configId) => {
   } catch (e) { /* ignore */ }
 }
 
-onMounted(loadConfigs)
+onMounted(() => {
+  if (props.userRole === 'admin') loadConfigs()
+})
 </script>
 
 <style scoped>

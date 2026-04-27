@@ -37,15 +37,27 @@ if [ -z "$REDIS_URL" ]; then
 fi
 
 # ==========================================
-# 2. 启动 Web 服务端 (基于 Gunicorn/Gthread)
+# 2. 数据库初始化
+# ==========================================
+echo "⏳ 正在初始化数据库..."
+python -m backend.model.init_db
+if [ $? -eq 0 ]; then
+    echo "✅ 数据库初始化完成"
+else
+    echo "❌ 数据库初始化失败，服务无法启动"
+    exit 1
+fi
+
+# ==========================================
+# 3. 启动 Web 服务端 (基于 Gunicorn/Gthread)
 # ==========================================
 echo "🌐 正在启动高并发 Web 服务 (多线程模式)..."
-gunicorn -k gthread -w 4 --threads 50 -b 0.0.0.0:5000 "main:app" > web_access.log 2> web_error.log &
+gunicorn -k gthread -w 4 --threads 50 -b 0.0.0.0:5000 "main:app" 2>&1 | tee -a web.log &
 WEB_PID=$!
 echo "✅ Web 服务启动成功 (PID: $WEB_PID)，运行端口: 5000"
 
 # ==========================================
-# 3. 启动后台处理引擎 (RQ Workers)
+# 4. 启动后台处理引擎 (RQ Workers)
 # ==========================================
 WORKER_COUNT=16
 echo "📍 连接 Redis: $REDIS_URL"
@@ -55,7 +67,7 @@ echo "------------------------------------------"
 
 for i in $(seq 1 $WORKER_COUNT)
 do
-    python run_worker.py >> worker.log 2>&1 &
+    python run_worker.py 2>&1 | tee -a worker_$i.log &
     sleep 0.5
 done
 

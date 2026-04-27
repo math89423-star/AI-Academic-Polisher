@@ -9,6 +9,7 @@ class ApiConfig(db.Model):
     api_key = db.Column(db.String(255), nullable=False)
     base_url = db.Column(db.String(255), nullable=False)
     model_name = db.Column(db.String(100), default='gpt-3.5-turbo')
+    api_type = db.Column(db.String(20), default='proxy', nullable=False)  # 'official', 'proxy', 'ollama'
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 class User(db.Model):
@@ -19,6 +20,7 @@ class User(db.Model):
     role = db.Column(db.String(20), default='user')
     usage_count = db.Column(db.Integer, default=0)
     is_active = db.Column(db.Boolean, default=True)
+    can_use_strict = db.Column(db.Boolean, default=False)
     api_config_id = db.Column(db.Integer, db.ForeignKey('api_configs.id'), nullable=True)
     api_config = db.relationship('ApiConfig', foreign_keys=[api_config_id], backref=db.backref('users_legacy', lazy=True))
 
@@ -53,5 +55,12 @@ class Task(db.Model):
     task_type = db.Column(db.String(20), default='text') # 'text' 或 'docx'
     file_path = db.Column(db.String(255), nullable=True) 
     result_file_path = db.Column(db.String(255), nullable=True)
-    
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class SystemSetting(db.Model):
+    __tablename__ = 'system_settings'
+    id = db.Column(db.Integer, primary_key=True)
+    key = db.Column(db.String(64), unique=True, nullable=False, index=True)
+    value = db.Column(db.Text, nullable=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

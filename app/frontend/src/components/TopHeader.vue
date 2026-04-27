@@ -4,6 +4,7 @@
     <div class="user-info">
       当前用户: <span style="font-weight: bold; color: #1e293b;">{{ username }}</span>
       <span v-if="userRole === 'admin'" class="role-badge">管理员</span>
+      <button v-if="userRole === 'admin'" class="admin-btn" @click="openAdmin">管理后台</button>
       <button class="logout-btn" @click="$emit('logout')">退出</button>
     </div>
   </div>
@@ -16,6 +17,8 @@ defineProps({
 })
 
 defineEmits(['logout'])
+
+const openAdmin = () => window.open('/admin', '_blank')
 </script>
 
 <style scoped>
@@ -23,5 +26,7 @@ defineEmits(['logout'])
 .system-title { margin: 0; font-size: 18px; color: #1e293b; white-space: nowrap; }
 .user-info { display: flex; align-items: center; gap: 8px; font-size: 14px; white-space: nowrap; }
 .role-badge { background: #dbeafe; color: #1d4ed8; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 500; }
+.admin-btn { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; border: none; padding: 6px 14px; border-radius: 4px; cursor: pointer; font-size: 13px; transition: all 0.2s; }
+.admin-btn:hover { opacity: 0.85; transform: translateY(-1px); }
 .logout-btn { background: #ef4444; color: white; border: none; padding: 6px 14px; border-radius: 4px; cursor: pointer; font-size: 13px; }
 </style>

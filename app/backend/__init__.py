@@ -34,7 +34,7 @@ def create_app(config_class=Config):
         from backend.routes.admin import admin_bp
         
         # 🟢 修复：剔除了已废弃的 SystemConfig，补上了 Task
-        from backend.model.models import User, Task, ApiConfig
+        from backend.model.models import User, Task, ApiConfig, SystemSetting
 
         # 注册路由前缀
         app.register_blueprint(auth_bp, url_prefix='/api/auth')
@@ -46,5 +46,14 @@ def create_app(config_class=Config):
     @app.route('/api/health')
     def health_check():
         return {"status": "ok", "message": "AI Polisher API is running!"}
+
+    # 上传文件静态服务
+    upload_dir = os.path.join(base_dir, 'uploads')
+    os.makedirs(upload_dir, exist_ok=True)
+
+    @app.route('/uploads/<path:filename>')
+    def serve_upload(filename):
+        from flask import send_from_directory
+        return send_from_directory(upload_dir, filename)
 
     return app

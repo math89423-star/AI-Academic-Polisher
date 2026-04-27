@@ -22,7 +22,8 @@ def require_admin(f):
     def decorated_function(*args, **kwargs):
         # 从请求中获取管理员用户名
         admin_username = request.args.get('admin_username') or \
-                        (request.json.get('admin_username') if request.json else None)
+                        (request.form.get('admin_username') if request.form else None) or \
+                        (request.json.get('admin_username') if request.is_json and request.json else None)
 
         user_service = UserService()
         if not user_service.check_admin(admin_username):

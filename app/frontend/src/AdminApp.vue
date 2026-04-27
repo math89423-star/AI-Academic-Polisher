@@ -23,6 +23,7 @@
       <div class="tabs">
         <button :class="{ active: activeTab === 'users' }" @click="activeTab = 'users'">用户管理</button>
         <button :class="{ active: activeTab === 'api' }" @click="activeTab = 'api'">API 配置</button>
+        <button :class="{ active: activeTab === 'theme' }" @click="activeTab = 'theme'">主题设置</button>
       </div>
 
       <div v-if="activeTab === 'users'" class="tab-content">
@@ -227,6 +228,90 @@
           </div>
         </div>
       </div>
+
+      <div v-if="activeTab === 'theme'" class="tab-content">
+        <h2>主题设置</h2>
+        <p style="color: #64748b; margin-bottom: 20px;">自定义系统主题色和页面背景，保存后对所有用户生效</p>
+
+        <div class="theme-form">
+          <div class="theme-row">
+            <label class="form-label">主题主色调</label>
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <input type="color" v-model="themeConfig.primary_color" class="color-picker" />
+              <input type="text" v-model="themeConfig.primary_color" class="color-input" placeholder="#3b82f6" />
+              <button class="btn-sm" @click="themeConfig.primary_color = '#3b82f6'">重置</button>
+            </div>
+          </div>
+
+          <div class="theme-row">
+            <label class="form-label">背景类型</label>
+            <div class="bg-type-group">
+              <button :class="{ active: themeConfig.bg_type === 'color' }" @click="themeConfig.bg_type = 'color'">纯色</button>
+              <button :class="{ active: themeConfig.bg_type === 'gradient' }" @click="themeConfig.bg_type = 'gradient'">渐变</button>
+              <button :class="{ active: themeConfig.bg_type === 'image' }" @click="themeConfig.bg_type = 'image'">背景图</button>
+            </div>
+          </div>
+
+          <div v-if="themeConfig.bg_type === 'color'" class="theme-row">
+            <label class="form-label">背景颜色</label>
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <input type="color" v-model="themeConfig.bg_value" class="color-picker" />
+              <input type="text" v-model="themeConfig.bg_value" class="color-input" />
+            </div>
+          </div>
+
+          <div v-if="themeConfig.bg_type === 'gradient'" class="theme-row">
+            <label class="form-label">渐变 CSS</label>
+            <input type="text" v-model="themeConfig.bg_value" placeholder="linear-gradient(135deg, #667eea, #764ba2)" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;" />
+            <div class="field-hint">输入完整的 CSS 渐变值，如 linear-gradient(135deg, #667eea, #764ba2)</div>
+          </div>
+
+          <div v-if="themeConfig.bg_type === 'image'" class="theme-row">
+            <label class="form-label">背景图片</label>
+            <div class="upload-area" @click="$refs.bgFileInput.click()" @dragover.prevent @drop.prevent="handleBgDrop">
+              <input ref="bgFileInput" type="file" accept="image/*" style="display:none" @change="handleBgUpload" />
+              <div v-if="!themeConfig.bg_value" class="upload-placeholder">
+                <div style="font-size: 36px; margin-bottom: 8px;">📁</div>
+                <div>点击或拖拽上传背景图片</div>
+                <div style="font-size: 12px; color: #94a3b8; margin-top: 4px;">支持 JPG / PNG / WebP，建议 1920x1080 以上</div>
+              </div>
+              <div v-else class="upload-preview">
+                <img :src="themeConfig.bg_value" alt="背景预览" />
+                <button class="remove-bg-btn" @click.stop="themeConfig.bg_value = ''">移除图片</button>
+              </div>
+            </div>
+            <div v-if="bgUploading" style="color: #f59e0b; font-size: 13px; margin-top: 8px;">上传中...</div>
+
+            <div class="theme-row" style="margin-top: 16px;">
+              <label class="form-label">背景透明度: {{ Math.round((themeConfig.bg_opacity ?? 1) * 100) }}%</label>
+              <input type="range" min="0.1" max="1" step="0.05" v-model.number="themeConfig.bg_opacity" class="opacity-slider" />
+            </div>
+
+            <div class="theme-row">
+              <label class="form-label">缩放模式</label>
+              <div class="bg-type-group">
+                <button :class="{ active: themeConfig.bg_size === 'cover' }" @click="themeConfig.bg_size = 'cover'">铺满 (Cover)</button>
+                <button :class="{ active: themeConfig.bg_size === 'contain' }" @click="themeConfig.bg_size = 'contain'">适应 (Contain)</button>
+                <button :class="{ active: themeConfig.bg_size === 'auto' }" @click="themeConfig.bg_size = 'auto'">平铺 (Tile)</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="theme-preview" :style="previewStyle">
+            <div class="preview-label">预览效果</div>
+            <div v-if="themeConfig.bg_type === 'image' && themeConfig.bg_value" class="preview-thumbnail">
+              <img :src="themeConfig.bg_value" alt="背景缩略图" />
+            </div>
+            <div class="preview-card" :style="{ borderColor: themeConfig.primary_color }">
+              <div class="preview-header" :style="{ background: themeConfig.primary_color }">标题栏</div>
+              <div class="preview-body">内容区域示例文本</div>
+            </div>
+          </div>
+
+          <button @click="saveTheme" class="btn-primary" style="margin-top: 20px;">保存主题配置</button>
+          <button @click="resetTheme" class="btn-secondary" style="margin-top: 20px; margin-left: 10px;">恢复默认主题</button>
+        </div>
+      </div>
       </div>
     </div>
   </div>
@@ -236,6 +321,8 @@
 import { ref, computed, onMounted } from 'vue'
 
 const activeTab = ref('users')
+const themeConfig = ref({ primary_color: '#3b82f6', bg_type: 'color', bg_value: '#f1f5f9', bg_opacity: 1, bg_size: 'cover' })
+const bgUploading = ref(false)
 const users = ref([])
 const apiConfigs = ref([])
 const showAddUser = ref(false)
@@ -276,6 +363,7 @@ const checkLoginStatus = () => {
     currentUsername.value = savedUsername
     loadUsers()
     loadApiConfigs()
+    loadTheme()
   }
 }
 
@@ -302,6 +390,7 @@ const handleLogin = async () => {
       loginError.value = ''
       loadUsers()
       loadApiConfigs()
+      loadTheme()
     } else {
       const data = await res.json()
       loginError.value = data.error || '用户名或密码错误'
@@ -513,58 +602,174 @@ const logout = () => {
   window.location.href = '/admin'
 }
 
+const previewStyle = computed(() => {
+  const t = themeConfig.value
+  if (t.bg_type === 'image' && t.bg_value) {
+    return {
+      backgroundImage: `url(${t.bg_value})`,
+      backgroundSize: t.bg_size || 'cover',
+      backgroundPosition: 'center',
+      backgroundRepeat: t.bg_size === 'auto' ? 'repeat' : 'no-repeat',
+      opacity: t.bg_opacity ?? 1
+    }
+  } else if (t.bg_type === 'gradient' && t.bg_value) {
+    return { backgroundImage: t.bg_value }
+  }
+  return { backgroundColor: t.bg_value || '#f1f5f9' }
+})
+
+const loadTheme = async () => {
+  const username = getAdminUsername()
+  try {
+    const res = await fetch(`/api/admin/theme?admin_username=${username}`)
+    if (res.ok) {
+      const data = await res.json()
+      themeConfig.value = { primary_color: '#3b82f6', bg_type: 'color', bg_value: '#f1f5f9', bg_opacity: 1, bg_size: 'cover', ...data }
+    }
+  } catch (e) { /* ignore */ }
+}
+
+const saveTheme = async () => {
+  const username = getAdminUsername()
+  const res = await fetch('/api/admin/theme', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ admin_username: username, ...themeConfig.value })
+  })
+  if (res.ok) alert('主题保存成功，刷新用户页面即可生效')
+  else alert('保存失败')
+}
+
+const resetTheme = async () => {
+  if (!confirm('确认恢复为默认主题？将清除所有自定义设置。')) return
+  themeConfig.value = { primary_color: '#3b82f6', bg_type: 'color', bg_value: '#f1f5f9', bg_opacity: 1, bg_size: 'cover' }
+  await saveTheme()
+}
+
+const handleBgUpload = async (event) => {
+  const file = event.target.files[0]
+  if (!file) return
+  await uploadBgFile(file)
+  event.target.value = ''
+}
+
+const handleBgDrop = async (event) => {
+  const file = event.dataTransfer.files[0]
+  if (file && file.type.startsWith('image/')) await uploadBgFile(file)
+}
+
+const uploadBgFile = async (file) => {
+  bgUploading.value = true
+  try {
+    const username = getAdminUsername()
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('admin_username', username)
+    const res = await fetch('/api/admin/theme/upload', { method: 'POST', body: formData })
+    if (res.ok) {
+      const data = await res.json()
+      themeConfig.value.bg_value = data.url
+    } else {
+      alert('上传失败')
+    }
+  } catch (e) {
+    alert('上传出错: ' + e.message)
+  } finally {
+    bgUploading.value = false
+  }
+}
+
 onMounted(() => { checkLoginStatus() })
 </script>
 
 <style scoped>
-#admin-app { min-height: 100vh; background: #f5f5f5; }
-.admin-header { background: #2c3e50; color: white; padding: 20px; display: flex; justify-content: space-between; align-items: center; }
-.logout-btn { background: #e74c3c; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; }
-.admin-container { max-width: 1200px; margin: 20px auto; background: white; padding: 20px; border-radius: 8px; }
-.tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #ddd; }
-.tabs button { padding: 10px 20px; border: none; background: none; cursor: pointer; font-size: 16px; }
-.tabs button.active { border-bottom: 3px solid #3498db; color: #3498db; }
-.tab-content h2 { margin-bottom: 20px; }
-.data-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-.data-table th, .data-table td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
-.data-table th { background: #f8f9fa; font-weight: bold; }
-.btn-primary { background: #3498db; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; margin-bottom: 20px; }
-.btn-danger { background: #e74c3c; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; }
-.btn-secondary { background: #95a5a6; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; }
-.modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); display: flex; justify-content: center; align-items: center; }
-.modal-content { background: white; padding: 30px; border-radius: 8px; min-width: 400px; }
-.modal-content h3 { margin-bottom: 20px; }
-.modal-content input, .modal-content select { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 4px; }
-.modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
-.form-label { display: block; margin-bottom: 5px; font-weight: 500; color: #333; }
-.form-select { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 4px; background: white; }
+#admin-app { min-height: 100vh; background: linear-gradient(135deg, #f5f7fa 0%, #e4e9f0 100%); }
+.admin-header { background: linear-gradient(135deg, #1e3a5f, #2c3e50, #34495e); color: white; padding: 20px 30px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 12px rgba(0,0,0,0.15); }
+.admin-header h1 { font-size: 20px; font-weight: 600; }
+.logout-btn { background: #e74c3c; color: white; border: none; padding: 8px 18px; border-radius: 6px; cursor: pointer; transition: all 0.2s; }
+.logout-btn:hover { background: #c0392b; transform: translateY(-1px); }
+.admin-container { max-width: 1200px; margin: 24px auto; background: white; padding: 24px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+.tabs { display: flex; gap: 6px; margin-bottom: 24px; padding-bottom: 0; border-bottom: none; background: #f1f5f9; border-radius: 8px; padding: 4px; }
+.tabs button { padding: 10px 20px; border: none; background: transparent; cursor: pointer; font-size: 14px; border-radius: 6px; transition: all 0.2s; color: #64748b; font-weight: 500; }
+.tabs button.active { background: white; color: #3498db; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+.tabs button:hover:not(.active) { color: #334155; }
+.tab-content h2 { margin-bottom: 20px; font-size: 18px; color: #1e293b; }
+.data-table { width: 100%; border-collapse: separate; border-spacing: 0; margin-top: 16px; border-radius: 8px; overflow: hidden; border: 1px solid #e2e8f0; }
+.data-table th, .data-table td { padding: 12px 16px; text-align: left; }
+.data-table th { background: #f8fafc; font-weight: 600; color: #475569; font-size: 13px; border-bottom: 2px solid #e2e8f0; }
+.data-table td { border-bottom: 1px solid #f1f5f9; }
+.data-table tbody tr:nth-child(even) { background: #fafbfc; }
+.data-table tbody tr:hover { background: #f0f7ff; }
+.btn-primary { background: linear-gradient(135deg, #3498db, #2980b9); color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; margin-bottom: 16px; transition: all 0.2s; font-weight: 500; }
+.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(52,152,219,0.3); }
+.btn-danger { background: #e74c3c; color: white; border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; transition: all 0.2s; }
+.btn-danger:hover { background: #c0392b; }
+.btn-secondary { background: #95a5a6; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; transition: all 0.2s; }
+.btn-secondary:hover { background: #7f8c8d; }
+.modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); backdrop-filter: blur(4px); display: flex; justify-content: center; align-items: center; z-index: 1000; animation: fadeIn 0.2s ease; }
+.modal-content { background: white; padding: 30px; border-radius: 12px; min-width: 420px; box-shadow: 0 20px 60px rgba(0,0,0,0.2); animation: slideUp 0.3s ease; }
+.modal-content h3 { margin-bottom: 20px; font-size: 16px; color: #1e293b; }
+.modal-content input, .modal-content select { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #e2e8f0; border-radius: 6px; transition: border-color 0.2s; }
+.modal-content input:focus { border-color: #3498db; outline: none; box-shadow: 0 0 0 3px rgba(52,152,219,0.1); }
+.modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 10px; }
+.form-label { display: block; margin-bottom: 6px; font-weight: 500; color: #334155; font-size: 14px; }
+.form-select { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #e2e8f0; border-radius: 6px; background: white; }
 .api-type-badge { display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 500; }
 .api-type-badge.type-official { background: #e3f2fd; color: #1976d2; }
 .api-type-badge.type-proxy { background: #f3e5f5; color: #7b1fa2; }
 .api-type-badge.type-ollama { background: #e8f5e9; color: #388e3c; }
-.btn-test { width: 100%; background: #ff9800; color: white; border: none; padding: 10px; border-radius: 4px; cursor: pointer; margin-bottom: 10px; }
-.btn-test:disabled { background: #ccc; cursor: not-allowed; }
-.btn-edit { background: #3498db; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; }
-.btn-test-sm { background: #ff9800; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; }
+.btn-test { width: 100%; background: linear-gradient(135deg, #ff9800, #f57c00); color: white; border: none; padding: 10px; border-radius: 6px; cursor: pointer; margin-bottom: 10px; transition: all 0.2s; }
+.btn-test:hover { transform: translateY(-1px); }
+.btn-test:disabled { background: #ccc; cursor: not-allowed; transform: none; }
+.btn-edit { background: #3498db; color: white; border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; transition: all 0.2s; }
+.btn-edit:hover { background: #2980b9; }
+.btn-test-sm { background: #ff9800; color: white; border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; transition: all 0.2s; }
 .btn-test-sm:disabled { background: #ccc; cursor: not-allowed; }
 .action-btns { display: flex; gap: 6px; }
-.test-result { padding: 10px; border-radius: 4px; margin-bottom: 15px; font-size: 14px; }
+.test-result { padding: 12px; border-radius: 6px; margin-bottom: 15px; font-size: 14px; }
 .test-result.success { background: #e8f5e9; color: #2e7d32; border: 1px solid #4caf50; }
 .test-result.error { background: #ffebee; color: #c62828; border: 1px solid #f44336; }
-.login-container { max-width: 400px; margin: 100px auto; padding: 40px; background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-.login-container h2 { margin-bottom: 30px; text-align: center; }
-.login-container input { width: 100%; padding: 12px; margin-bottom: 20px; border: 1px solid #ddd; border-radius: 4px; }
+.login-container { max-width: 400px; margin: 100px auto; padding: 40px; background: white; border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.12); }
+.login-container h2 { margin-bottom: 30px; text-align: center; color: #1e293b; }
+.login-container input { width: 100%; padding: 12px; margin-bottom: 16px; border: 1px solid #e2e8f0; border-radius: 8px; transition: border-color 0.2s; }
+.login-container input:focus { border-color: #3498db; outline: none; box-shadow: 0 0 0 3px rgba(52,152,219,0.1); }
 .error-msg { color: #e74c3c; margin-top: 10px; font-size: 14px; }
 .header-right { display: flex; align-items: center; gap: 15px; }
 .username { color: #ecf0f1; font-size: 14px; }
 .required { color: #e74c3c; margin-left: 2px; }
-.field-hint { font-size: 12px; color: #94a3b8; margin: -10px 0 15px 0; }
+.field-hint { font-size: 12px; color: #94a3b8; margin: 4px 0 15px 0; }
 .toolbar { display: flex; gap: 10px; align-items: center; }
-.inline-select { padding: 4px 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; background: white; min-width: 120px; }
+.inline-select { padding: 6px 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; background: white; min-width: 120px; }
 .switch { position: relative; display: inline-block; width: 40px; height: 22px; }
 .switch input { opacity: 0; width: 0; height: 0; }
 .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background: #ccc; border-radius: 22px; transition: 0.3s; }
 .slider:before { content: ""; position: absolute; height: 16px; width: 16px; left: 3px; bottom: 3px; background: white; border-radius: 50%; transition: 0.3s; }
 .switch input:checked + .slider { background: #2ecc71; }
 .switch input:checked + .slider:before { transform: translateX(18px); }
+.btn-sm { padding: 6px 12px; font-size: 12px; border: 1px solid #e2e8f0; background: white; border-radius: 6px; cursor: pointer; color: #64748b; transition: all 0.2s; }
+.btn-sm:hover { background: #f1f5f9; }
+.color-picker { width: 40px; height: 36px; border: none; border-radius: 6px; cursor: pointer; padding: 0; }
+.color-input { width: 100px; padding: 8px; border: 1px solid #e2e8f0; border-radius: 6px; font-family: monospace; }
+.theme-form { max-width: 600px; }
+.theme-row { margin-bottom: 24px; }
+.bg-type-group { display: flex; gap: 4px; background: #f1f5f9; border-radius: 8px; padding: 4px; }
+.bg-type-group button { padding: 8px 20px; border: none; background: transparent; cursor: pointer; border-radius: 6px; font-size: 13px; color: #64748b; transition: all 0.2s; }
+.bg-type-group button.active { background: white; color: #3498db; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+.upload-area { border: 2px dashed #d1d5db; border-radius: 12px; padding: 30px; text-align: center; cursor: pointer; transition: all 0.2s; min-height: 160px; display: flex; align-items: center; justify-content: center; }
+.upload-area:hover { border-color: #3498db; background: #f8faff; }
+.upload-placeholder { color: #64748b; font-size: 14px; }
+.upload-preview { position: relative; width: 100%; }
+.upload-preview img { max-width: 100%; max-height: 200px; border-radius: 8px; object-fit: cover; }
+.remove-bg-btn { position: absolute; top: 8px; right: 8px; background: rgba(239,68,68,0.9); color: white; border: none; padding: 4px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; }
+.theme-preview { margin-top: 24px; padding: 24px; border-radius: 12px; border: 1px solid #e2e8f0; min-height: 160px; position: relative; display: flex; align-items: flex-start; gap: 20px; }
+.preview-label { position: absolute; top: -10px; left: 12px; background: white; padding: 0 8px; font-size: 12px; color: #94a3b8; }
+.preview-thumbnail { width: 160px; height: 100px; border-radius: 8px; overflow: hidden; border: 1px solid #e2e8f0; flex-shrink: 0; }
+.preview-thumbnail img { width: 100%; height: 100%; object-fit: cover; }
+.preview-card { border: 2px solid; border-radius: 8px; overflow: hidden; max-width: 300px; }
+.preview-header { color: white; padding: 10px 16px; font-size: 14px; font-weight: 500; }
+.preview-body { padding: 16px; font-size: 13px; color: #475569; background: white; }
+.opacity-slider { width: 100%; height: 6px; -webkit-appearance: none; appearance: none; background: linear-gradient(90deg, #e2e8f0, #3498db); border-radius: 3px; outline: none; cursor: pointer; }
+.opacity-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: white; border: 2px solid #3498db; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,0.15); }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 </style>

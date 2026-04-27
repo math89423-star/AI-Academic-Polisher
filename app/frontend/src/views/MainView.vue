@@ -89,5 +89,5 @@ const handleDeleteTask = async (taskId) => {
 </script>
 
 <style scoped>
-.queue-status { padding: 6px 20px; background: #fef3c7; color: #92400e; font-size: 13px; border-bottom: 1px solid #fde68a; }
+.queue-status { padding: 8px 20px; background: linear-gradient(135deg, #fef3c7, #fde68a); color: #92400e; font-size: 13px; border-bottom: 1px solid #fde68a; font-weight: 500; }
 </style>

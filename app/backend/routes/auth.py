@@ -7,6 +7,7 @@
 from flask import Blueprint, request, jsonify
 from backend.services.user_service import UserService
 from backend.utils.logging_config import get_logger
+import json
 
 auth_bp = Blueprint('auth', __name__)
 user_service = UserService()
@@ -25,7 +26,7 @@ def user_login():
     try:
         user = user_service.authenticate_user(username)
         logger.info(f"用户登录成功: {username}")
-        return jsonify({"message": "登录成功", "username": user.username}), 200
+        return jsonify({"message": "登录成功", "username": user.username, "role": user.role}), 200
 
     except ValueError as e:
         logger.warning(f"用户登录失败: {username}, 原因: {str(e)}")
@@ -45,8 +46,18 @@ def admin_login():
     try:
         admin = user_service.authenticate_admin(username, password)
         logger.info(f"管理员登录成功: {username}")
-        return jsonify({"message": "管理员登录成功", "username": admin.username}), 200
+        return jsonify({"message": "管理员登录成功", "username": admin.username, "role": admin.role}), 200
 
     except ValueError as e:
         logger.warning(f"管理员登录失败: {username}")
         return jsonify({"error": str(e)}), 401
+
+
+@auth_bp.route('/theme', methods=['GET'])
+def get_public_theme():
+    """公开接口：获取当前主题配置"""
+    from backend.model.models import SystemSetting
+    setting = SystemSetting.query.filter_by(key='theme').first()
+    if setting and setting.value:
+        return jsonify(json.loads(setting.value)), 200
+    return jsonify({"primary_color": "#3b82f6", "bg_type": "color", "bg_value": "#f1f5f9"}), 200

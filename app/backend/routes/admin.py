@@ -8,7 +8,10 @@ from backend.services.user_service import UserService
 from backend.services.api_config_service import ApiConfigService
 from backend.utils.decorators import require_admin
 from backend.utils.logging_config import get_logger
+from werkzeug.utils import secure_filename
 import asyncio
+import json
+import os
 
 admin_bp = Blueprint('admin', __name__)
 user_service = UserService()
@@ -237,3 +240,60 @@ def test_api_config():
     except Exception as e:
         logger.error(f"API连接测试失败: {str(e)}")
         return jsonify({"success": False, "message": f"测试异常: {str(e)}"}), 500
+
+
+# === 主题管理 ===
+
+@admin_bp.route('/theme', methods=['GET'])
+@require_admin
+def get_theme():
+    """获取当前主题配置"""
+    from backend.model.models import SystemSetting
+    setting = SystemSetting.query.filter_by(key='theme').first()
+    if setting and setting.value:
+        return jsonify(json.loads(setting.value)), 200
+    return jsonify({"primary_color": "#3b82f6", "bg_type": "color", "bg_value": "#f1f5f9"}), 200
+
+
+@admin_bp.route('/theme', methods=['POST'])
+@require_admin
+def save_theme():
+    """保存主题配置"""
+    from backend.model.models import SystemSetting
+    from backend.extensions import db
+
+    data = request.json
+    setting = SystemSetting.query.filter_by(key='theme').first()
+
+    if not setting:
+        setting = SystemSetting(key='theme')
+        db.session.add(setting)
+
+    setting.value = json.dumps(data)
+    db.session.commit()
+
+    logger.info(f"管理员更新主题配置")
+    return jsonify({"message": "主题保存成功"}), 200
+
+
+@admin_bp.route('/theme/upload', methods=['POST'])
+@require_admin
+def upload_theme_bg():
+    """上传主题背景图"""
+    if 'file' not in request.files:
+        return jsonify({"error": "未找到文件"}), 400
+
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({"error": "文件名为空"}), 400
+
+    filename = secure_filename(file.filename)
+    upload_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../uploads')
+    os.makedirs(upload_dir, exist_ok=True)
+
+    filepath = os.path.join(upload_dir, filename)
+    file.save(filepath)
+
+    url = f"/uploads/{filename}"
+    logger.info(f"管理员上传主题背景图: {filename}")
+    return jsonify({"url": url}), 200

@@ -1,2 +1,2 @@
 # backend/models/__init__.py
-from .models import User, Task, ApiConfig
+from .models import User, Task, ApiConfig, SystemSetting
