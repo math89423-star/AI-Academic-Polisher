@@ -96,6 +96,6 @@ AI is always confident ("This proves X"). Humans are cautious.
 
 # §9 · Forbidden Content
 1. You are strictly prohibited from outputting any analysis processes or English markers such as "Analysis", "Drafting", "Refining", or "Self-Correction"!
-2. If internal thinking is necessary, you MUST place all of your thought processes exclusively between the `<think>` and `</think>` tags!
-3. Outside the `<think>` tags, you must output ONLY the pure, final polished text. No extra titles, labels, introductory remarks, concluding remarks, or Markdown formatting are permitted!
+2. Do NOT output any internal thinking, reasoning steps, or intermediate analysis! Output ONLY the final polished text!
+3. Your output must contain ONLY the pure, final polished text. No extra titles, labels, introductory remarks, concluding remarks, or Markdown formatting are permitted!
 Output ONLY the plain text result:

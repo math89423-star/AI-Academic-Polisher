@@ -71,9 +71,16 @@ const elapsedText = computed(() => {
   return `${m}m ${rem}s`
 })
 
+function calcElapsedFromServer() {
+  if (!props.currentTask?.time) return 0
+  const created = new Date(props.currentTask.time)
+  if (isNaN(created.getTime())) return 0
+  return Math.max(0, Math.floor((Date.now() - created.getTime()) / 1000))
+}
+
 function startTimer() {
   stopTimer()
-  elapsedSeconds.value = 0
+  elapsedSeconds.value = calcElapsedFromServer()
   timerInterval = setInterval(() => { elapsedSeconds.value++ }, 1000)
 }
 
@@ -91,7 +98,7 @@ watch(isWaiting, (waiting) => {
 
 watch(() => props.currentTask?.id, () => {
   stopTimer()
-  elapsedSeconds.value = 0
+  elapsedSeconds.value = calcElapsedFromServer()
   if (isWaiting.value) startTimer()
 })
 

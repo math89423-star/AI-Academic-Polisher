@@ -48,15 +48,46 @@ class TextTaskProcessor(BaseTaskProcessor):
             history_text=self.task.polished_text
         )
 
+        inside_think = False
+        buf = ""
+
         for chunk in generator:
-            # 检查取消信号
             if self.check_cancellation():
                 self.task.polished_text = full_text
                 db.session.commit()
                 return
 
-            full_text += chunk
-            self.progress_publisher.publish_stream(chunk)
+            buf += chunk
+
+            while buf:
+                if inside_think:
+                    end_pos = buf.lower().find("</think>")
+                    if end_pos != -1:
+                        buf = buf[end_pos + 8:]
+                        inside_think = False
+                    else:
+                        buf = buf[-8:] if len(buf) > 8 else buf
+                        break
+                else:
+                    start_pos = buf.lower().find("<think>")
+                    if start_pos != -1:
+                        clean = buf[:start_pos]
+                        if clean:
+                            full_text += clean
+                            self.progress_publisher.publish_stream(clean)
+                        buf = buf[start_pos + 7:]
+                        inside_think = True
+                    else:
+                        safe = buf[:-7] if len(buf) > 7 else ""
+                        if safe:
+                            full_text += safe
+                            self.progress_publisher.publish_stream(safe)
+                        buf = buf[len(safe):]
+                        break
+
+        if buf and not inside_think:
+            full_text += buf
+            self.progress_publisher.publish_stream(buf)
 
         self.task.polished_text = full_text
         db.session.commit()
