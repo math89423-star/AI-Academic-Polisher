@@ -1,9 +1,58 @@
-venv/
-__pycache__/
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
 *.pyc
 *.pyo
 *.pyd
 .Python
-env/
-.git/
-.gitignore
+*.so
+*.egg
+*.egg-info
+dist
+build
+.pytest_cache
+.coverage
+
+# Node
+node_modules
+npm-debug.log
+yarn-error.log
+.npm
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# 环境变量（构建时通过 env_file 注入）
+.env.local
+.env.*.local
+
+# 日志
+*.log
+logs/
+
+# 数据
+mysql_data/
+redis_data/
+uploads/
+outputs/
+
+# 临时文件
+*.tmp
+*.bak
+.DS_Store
+
+# 文档
+README*.md
+docs/
+
+# 测试
+tests/
+*.test.js
+*.spec.js

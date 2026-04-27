@@ -1,70 +1,91 @@
 #!/bin/bash
 
 # ==========================================
-# 0. 进程守护与清理钩子 (Trap)
+# Docker Compose 一键启动脚本
 # ==========================================
-cleanup() {
-    echo ""
-    echo "🛑 收到停止信号，正在安全关闭所有服务..."
-    pkill -f "gunicorn" || true
-    pkill -f "run_worker.py" || true
-    echo "✅ 所有服务已完全停止。期待下次使用！"
-    exit 0
-}
-trap cleanup SIGINT SIGTERM
 
-echo "🧹 正在清理可能遗留的旧进程..."
-pkill -f "gunicorn" || true
-pkill -f "run_worker.py" || true
-pkill -f "rq worker" || true
+set -e
 
-# ==========================================
-# 1. 环境初始化
-# ==========================================
-PROJECT_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-cd "$PROJECT_ROOT"
+echo "=========================================="
+echo "🚀 AI 极速学术润色系统 - Docker 部署脚本"
+echo "=========================================="
 
-export PYTHONPATH=$PYTHONPATH:$PROJECT_ROOT
-
-echo "------------------------------------------"
-echo "🚀 AI 极速学术润色系统 - Docker 生产集群内部启动中..."
-echo "------------------------------------------"
-
-if [ -f .env ]; then
-    REDIS_URL=$(grep REDIS_URL .env | cut -d '=' -f2- | tr -d '\r')
-else
-    echo "❌ 错误: 找不到 .env 文件，请确保已将其映射入容器中。"
+# 检查 docker-compose 是否安装
+if ! command -v docker-compose &> /dev/null && ! docker compose version &> /dev/null; then
+    echo "❌ 错误: 未找到 docker-compose 或 docker compose 命令"
+    echo "请先安装 Docker Compose: https://docs.docker.com/compose/install/"
     exit 1
 fi
 
-# ==========================================
-# 2. 启动 Web 服务端 (基于 Gunicorn/Gthread)
-# ==========================================
-echo "🌐 正在启动高并发 Web 服务 (多线程模式)..."
-gunicorn -k gthread -w 4 --threads 50 -b 0.0.0.0:5000 "main:app" > web_access.log 2> web_error.log &
-WEB_PID=$!
-echo "✅ Web 服务启动成功 (PID: $WEB_PID)，运行端口: 5000"
+# 使用 docker compose 或 docker-compose
+COMPOSE_CMD="docker compose"
+if ! docker compose version &> /dev/null; then
+    COMPOSE_CMD="docker-compose"
+fi
 
-# ==========================================
-# 3. 启动后台处理引擎 (RQ Workers)
-# ==========================================
-WORKER_COUNT=16  # 降低 worker 数量，减少 Redis 连接压力 
-echo "📍 连接 Redis: $REDIS_URL"
-echo "📦 监听队列: ai_tasks"
-echo "🔢 即将启动并行 Worker 数量: $WORKER_COUNT"
-echo "------------------------------------------"
+# 解析命令行参数
+ACTION=${1:-up}
 
-for i in $(seq 1 $WORKER_COUNT)
-do
-    # 🟢 致命修复：停止将日志扔进黑洞，改为追加到 worker.log 文件中！
-    python run_worker.py >> worker.log 2>&1 &
-    sleep 0.5 
-done
+case $ACTION in
+    up|start)
+        echo "📦 正在构建并启动所有容器..."
+        $COMPOSE_CMD up -d --build
+        echo ""
+        echo "✅ 所有服务已启动！"
+        echo "🌐 访问地址: http://localhost"
+        echo "📊 查看日志: $COMPOSE_CMD logs -f"
+        ;;
 
-echo "✅ $WORKER_COUNT 个 Worker 已全部在后台满血待命！"
-echo "=========================================="
-echo "🎉 生产级环境全面启动成功！支持数十人同时润色排队。"
-echo "💡 提示：本窗口已进入守护模式，请勿关闭。"
-echo "=========================================="
+    down|stop)
+        echo "🛑 正在停止所有容器..."
+        $COMPOSE_CMD down
+        echo "✅ 所有服务已停止"
+        ;;
 
-wait
+    restart)
+        echo "🔄 正在重启所有容器..."
+        $COMPOSE_CMD restart
+        echo "✅ 所有服务已重启"
+        ;;
+
+    logs)
+        echo "📋 查看实时日志 (Ctrl+C 退出)..."
+        $COMPOSE_CMD logs -f
+        ;;
+
+    ps|status)
+        echo "📊 容器运行状态:"
+        $COMPOSE_CMD ps
+        ;;
+
+    build)
+        echo "🔨 重新构建所有镜像..."
+        $COMPOSE_CMD build --no-cache
+        echo "✅ 镜像构建完成"
+        ;;
+
+    clean)
+        echo "🧹 清理所有容器、镜像和数据卷..."
+        read -p "⚠️  警告: 这将删除所有数据！确认继续? (yes/no): " confirm
+        if [ "$confirm" = "yes" ]; then
+            $COMPOSE_CMD down -v --rmi all
+            echo "✅ 清理完成"
+        else
+            echo "❌ 已取消"
+        fi
+        ;;
+
+    *)
+        echo "用法: $0 {up|down|restart|logs|ps|build|clean}"
+        echo ""
+        echo "命令说明:"
+        echo "  up/start   - 构建并启动所有容器"
+        echo "  down/stop  - 停止并删除所有容器"
+        echo "  restart    - 重启所有容器"
+        echo "  logs       - 查看实时日志"
+        echo "  ps/status  - 查看容器状态"
+        echo "  build      - 重新构建镜像"
+        echo "  clean      - 清理所有容器和数据"
+        exit 1
+        ;;
+esac

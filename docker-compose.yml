@@ -1,26 +1,54 @@
 version: '3.8'
 
 services:
-  aipolish-app:
-    build: 
-      context: .
-      dockerfile: Dockerfile
-    container_name: aipolish_server
+  # Nginx 网关
+  nginx:
+    image: nginx:alpine
+    container_name: aipolish_nginx
     restart: always
-    extra_hosts:                               
-      - "api.devdove.cc:108.162.198.183"
+    ports:
+      - "80:80"
+      - "8080:8080"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - aipolish-network
+
+  # 前端应用
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: aipolish_frontend
+    restart: always
+    networks:
+      - aipolish-network
+
+  # 后端应用
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: aipolish_backend
+    restart: always
     ports:
       - "5000:5000"
     env_file:
       - .env
     volumes:
-      - ./:/app
       - ./uploads:/app/uploads
       - ./outputs:/app/outputs
+      - ./logs:/app/logs
     depends_on:
       - mysql
-      - redis  # 让 App 启动前先等待 Redis 启动
+      - redis
+    networks:
+      - aipolish-network
 
+  # MySQL 数据库
   mysql:
     image: m.daocloud.io/docker.io/library/mysql:8.0
     container_name: aipolish_mysql
@@ -36,22 +64,30 @@ services:
       TZ: Asia/Shanghai
     volumes:
       - ./mysql_data:/var/lib/mysql
-      - ./backend/model/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./app/backend/model/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - aipolish-network
 
-  # 将 Redis 纳入集群编排
+  # Redis 缓存
   redis:
-    image: redis:7.0-alpine  # 使用 alpine 轻量级镜像
+    image: redis:7.0-alpine
     container_name: aipolish_redis
     restart: always
     ports:
       - "6379:6379"
     volumes:
-      - ./redis_data:/data  # 将 Redis 数据持久化到宿主机
-      - ./redis.conf:/usr/local/etc/redis/redis.conf  # 挂载配置文件
-    # 使用配置文件启动，限制内存并开启持久化
+      - ./redis_data:/data
+      - ./redis.conf:/usr/local/etc/redis/redis.conf
     command: redis-server /usr/local/etc/redis/redis.conf
+    networks:
+      - aipolish-network
 
-# 声明数据卷
+# 网络配置
+networks:
+  aipolish-network:
+    driver: bridge
+
+# 数据卷
 volumes:
   mysql_data:
-  redis_data:  # 🟢 声明 Redis 数据卷
+  redis_data:

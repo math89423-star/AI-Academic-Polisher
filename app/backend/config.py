@@ -35,8 +35,32 @@ class Config:
 
     # --- Redis 与并发配置 ---
     REDIS_URL = os.environ.get('REDIS_URL', 'redis://127.0.0.1:6379/0')
-    MAX_AI_WORKERS = int(os.environ.get('MAX_AI_WORKERS',32))
+    MAX_AI_WORKERS = int(os.environ.get('MAX_AI_WORKERS', 32))
 
     # [新增] --- 管理员配置 ---
     ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'admin')
     ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', '123456')
+
+
+class WorkerConfig:
+    """Worker任务处理配置"""
+    MAX_WORKERS = int(os.environ.get('MAX_AI_WORKERS', 32))
+    TEXT_CHUNK_SIZE = int(os.environ.get('TEXT_CHUNK_SIZE', 600))
+    RETRY_TIMES = int(os.environ.get('RETRY_TIMES', 3))
+    RETRY_DELAY_BASE = int(os.environ.get('RETRY_DELAY_BASE', 2))  # 指数退避基数
+
+
+class SSEConfig:
+    """SSE流式推送配置"""
+    TIMEOUT = int(os.environ.get('SSE_TIMEOUT', 600))  # 10分钟
+    HEARTBEAT_INTERVAL = int(os.environ.get('SSE_HEARTBEAT', 30))  # 心跳间隔
+
+
+class RedisConfig:
+    """Redis缓存配置"""
+    CANCEL_KEY_TTL = int(os.environ.get('CANCEL_KEY_TTL', 3600))  # 取消信号过期时间
+    TEXT_HASH_TTL = int(os.environ.get('TEXT_HASH_TTL', 24))  # 文本哈希过期时间（小时）
+    PROGRESS_KEY_PREFIX = 'text_progress:task:'
+    DOCX_DONE_PREFIX = 'docx_done_indices:task:'
+    CANCEL_KEY_PREFIX = 'cancel:task:'
+    STREAM_CHANNEL_PREFIX = 'stream:task:'
