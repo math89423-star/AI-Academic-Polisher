@@ -106,28 +106,42 @@ document.addEventListener('DOMContentLoaded', () => {
         const res = await fetch(`/api/admin/users?admin_username=${currentAdmin}`);
         if (!res.ok) return;
         const users = await res.json();
-        
+
         const tbody = document.getElementById('user-table-body');
         tbody.innerHTML = '';
-        
+
         users.forEach(u => {
-            let optionsHtml = '<option value="">[默认] 系统全局线路</option>';
+            // 标准模式下拉框
+            let optionsStandard = '<option value="">[默认] 系统全局线路</option>';
             globalApiConfigs.forEach(conf => {
-                const selected = (u.api_config_id === conf.id) ? 'selected' : '';
-                optionsHtml += `<option value="${conf.id}" ${selected}>${conf.name}</option>`;
+                const selected = (u.api_config_id_standard === conf.id) ? 'selected' : '';
+                optionsStandard += `<option value="${conf.id}" ${selected}>${conf.name}</option>`;
             });
 
-            const roleBadge = u.role === 'admin' 
-                ? '<span class="role-badge role-admin">管理员</span>' 
+            // 极致模式下拉框
+            let optionsStrict = '<option value="">[默认] 系统全局线路</option>';
+            globalApiConfigs.forEach(conf => {
+                const selected = (u.api_config_id_strict === conf.id) ? 'selected' : '';
+                optionsStrict += `<option value="${conf.id}" ${selected}>${conf.name}</option>`;
+            });
+
+            const roleBadge = u.role === 'admin'
+                ? '<span class="role-badge role-admin">管理员</span>'
                 : '<span class="role-badge role-user">普通用户</span>';
 
             tbody.innerHTML += `
                 <tr>
+                    <td><input type="checkbox" class="user-checkbox" data-username="${u.username}"></td>
                     <td style="font-weight: 500; color: #0f172a;">${u.username}</td>
                     <td>${roleBadge}</td>
                     <td>
-                        <select class="api-select" data-username="${u.username}">
-                            ${optionsHtml}
+                        <select class="api-select" data-username="${u.username}" data-mode="standard">
+                            ${optionsStandard}
+                        </select>
+                    </td>
+                    <td>
+                        <select class="api-select" data-username="${u.username}" data-mode="strict">
+                            ${optionsStrict}
                         </select>
                     </td>
                     <td><span style="background: #f1f5f9; padding: 2px 8px; border-radius: 4px;">${u.usage_count} 次</span></td>
@@ -138,15 +152,29 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
         });
 
+        // 绑定全选功能
+        document.getElementById('select-all-users').addEventListener('change', (e) => {
+            document.querySelectorAll('.user-checkbox').forEach(cb => {
+                cb.checked = e.target.checked;
+            });
+            updateSelectedCount();
+        });
+
+        // 绑定复选框变化事件
+        document.querySelectorAll('.user-checkbox').forEach(cb => {
+            cb.addEventListener('change', updateSelectedCount);
+        });
+
         // 绑定更新用户线路事件
         document.querySelectorAll('.api-select').forEach(select => {
             select.addEventListener('change', async (e) => {
                 const target_username = e.target.getAttribute('data-username');
+                const mode = e.target.getAttribute('data-mode');
                 const api_config_id = e.target.value;
                 const res = await fetch('/api/admin/users/update_config', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ admin_username: currentAdmin, target_username, api_config_id })
+                    body: JSON.stringify({ admin_username: currentAdmin, target_username, api_config_id, mode })
                 });
                 if (!res.ok) alert("调度线路更新失败，请检查权限");
             });
@@ -166,6 +194,141 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
     }
+
+    function updateSelectedCount() {
+        const count = document.querySelectorAll('.user-checkbox:checked').length;
+        document.getElementById('selected-count').innerText = `已选择 ${count} 个用户`;
+    }
+
+    // 批量更新标准模式线路
+    document.getElementById('batch-update-standard-btn').addEventListener('click', async () => {
+        const selectedUsers = Array.from(document.querySelectorAll('.user-checkbox:checked'))
+            .map(cb => cb.getAttribute('data-username'));
+
+        if (selectedUsers.length === 0) {
+            alert('请先选择要更新的用户');
+            return;
+        }
+
+        // 构建线路选择对话框
+        let options = '<option value="">使用系统默认线路</option>';
+        globalApiConfigs.forEach(conf => {
+            options += `<option value="${conf.id}">${conf.name} (${conf.model_name})</option>`;
+        });
+
+        const selectHtml = `
+            <div style="padding: 20px;">
+                <p style="margin-bottom: 15px;">为选中的 ${selectedUsers.length} 个用户批量设置<strong>标准模式</strong>线路：</p>
+                <select id="batch-select-standard" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px;">
+                    ${options}
+                </select>
+            </div>
+        `;
+
+        // 创建自定义对话框
+        const dialog = document.createElement('div');
+        dialog.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 9999;';
+        dialog.innerHTML = `
+            <div style="background: white; border-radius: 12px; width: 500px; max-width: 90%;">
+                ${selectHtml}
+                <div style="padding: 0 20px 20px; display: flex; gap: 10px; justify-content: flex-end;">
+                    <button id="batch-cancel" style="padding: 10px 20px; background: #e2e8f0; border: none; border-radius: 6px; cursor: pointer;">取消</button>
+                    <button id="batch-confirm" style="padding: 10px 20px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer;">确认更新</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(dialog);
+
+        document.getElementById('batch-cancel').onclick = () => dialog.remove();
+        document.getElementById('batch-confirm').onclick = async () => {
+            const api_config_id = document.getElementById('batch-select-standard').value;
+            dialog.remove();
+
+            const res = await fetch('/api/admin/users/batch_update_config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    admin_username: currentAdmin,
+                    usernames: selectedUsers,
+                    mode: 'standard',
+                    api_config_id: api_config_id || null
+                })
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                alert(data.message);
+                loadUsers();
+            } else {
+                alert('批量更新失败');
+            }
+        };
+    });
+
+    // 批量更新极致模式线路
+    document.getElementById('batch-update-strict-btn').addEventListener('click', async () => {
+        const selectedUsers = Array.from(document.querySelectorAll('.user-checkbox:checked'))
+            .map(cb => cb.getAttribute('data-username'));
+
+        if (selectedUsers.length === 0) {
+            alert('请先选择要更新的用户');
+            return;
+        }
+
+        // 构建线路选择对话框
+        let options = '<option value="">使用系统默认线路</option>';
+        globalApiConfigs.forEach(conf => {
+            options += `<option value="${conf.id}">${conf.name} (${conf.model_name})</option>`;
+        });
+
+        const selectHtml = `
+            <div style="padding: 20px;">
+                <p style="margin-bottom: 15px;">为选中的 ${selectedUsers.length} 个用户批量设置<strong>极致模式</strong>线路：</p>
+                <select id="batch-select-strict" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px;">
+                    ${options}
+                </select>
+            </div>
+        `;
+
+        // 创建自定义对话框
+        const dialog = document.createElement('div');
+        dialog.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 9999;';
+        dialog.innerHTML = `
+            <div style="background: white; border-radius: 12px; width: 500px; max-width: 90%;">
+                ${selectHtml}
+                <div style="padding: 0 20px 20px; display: flex; gap: 10px; justify-content: flex-end;">
+                    <button id="batch-cancel" style="padding: 10px 20px; background: #e2e8f0; border: none; border-radius: 6px; cursor: pointer;">取消</button>
+                    <button id="batch-confirm" style="padding: 10px 20px; background: #8b5cf6; color: white; border: none; border-radius: 6px; cursor: pointer;">确认更新</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(dialog);
+
+        document.getElementById('batch-cancel').onclick = () => dialog.remove();
+        document.getElementById('batch-confirm').onclick = async () => {
+            const api_config_id = document.getElementById('batch-select-strict').value;
+            dialog.remove();
+
+            const res = await fetch('/api/admin/users/batch_update_config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    admin_username: currentAdmin,
+                    usernames: selectedUsers,
+                    mode: 'strict',
+                    api_config_id: api_config_id || null
+                })
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                alert(data.message);
+                loadUsers();
+            } else {
+                alert('批量更新失败');
+            }
+        };
+    });
 
     // --- 按钮提交事件 ---
     document.getElementById('add-user-btn').addEventListener('click', async () => {

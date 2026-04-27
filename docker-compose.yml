@@ -7,11 +7,14 @@ services:
       dockerfile: Dockerfile
     container_name: aipolish_server
     restart: always
+    extra_hosts:                               
+      - "api.devdove.cc:108.162.198.183"
     ports:
       - "8020:8020"
     env_file:
       - .env
     volumes:
+      - ./:/app
       - ./uploads:/app/uploads
       - ./outputs:/app/outputs
     depends_on:
@@ -23,7 +26,7 @@ services:
     container_name: aipolish_mysql
     restart: always
     ports:
-      - "127.0.0.1:3306:3306"
+      - "3306:3306"
     env_file:
       - .env
     command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
@@ -44,8 +47,9 @@ services:
       - "6379:6379"
     volumes:
       - ./redis_data:/data  # 将 Redis 数据持久化到宿主机
-    # 开启 AOF 持久化，确保队列中的任务即使意外重启也不会丢失
-    command: redis-server --appendonly yes
+      - ./redis.conf:/usr/local/etc/redis/redis.conf  # 挂载配置文件
+    # 使用配置文件启动，限制内存并开启持久化
+    command: redis-server /usr/local/etc/redis/redis.conf
 
 # 声明数据卷
 volumes:

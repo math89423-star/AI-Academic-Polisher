@@ -20,7 +20,14 @@ class User(db.Model):
     usage_count = db.Column(db.Integer, default=0)
     is_active = db.Column(db.Boolean, default=True)
     api_config_id = db.Column(db.Integer, db.ForeignKey('api_configs.id'), nullable=True)
-    api_config = db.relationship('ApiConfig', backref=db.backref('users', lazy=True))
+    api_config = db.relationship('ApiConfig', foreign_keys=[api_config_id], backref=db.backref('users_legacy', lazy=True))
+
+    # 双模式线路配置
+    api_config_id_standard = db.Column(db.Integer, db.ForeignKey('api_configs.id'), nullable=True)
+    api_config_id_strict = db.Column(db.Integer, db.ForeignKey('api_configs.id'), nullable=True)
+    api_config_standard = db.relationship('ApiConfig', foreign_keys=[api_config_id_standard], backref=db.backref('users_standard', lazy=True))
+    api_config_strict = db.relationship('ApiConfig', foreign_keys=[api_config_id_strict], backref=db.backref('users_strict', lazy=True))
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     def set_password(self, password):

@@ -9,6 +9,17 @@
     --border-color: #e2e8f0;
 }
 
+/* 暗黑模式变量 */
+[data-theme="dark"] {
+    --primary-color: #60a5fa;
+    --primary-hover: #3b82f6;
+    --bg-color: #0f172a;
+    --panel-bg: #1e293b;
+    --text-main: #e2e8f0;
+    --text-muted: #94a3b8;
+    --border-color: #334155;
+}
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
@@ -16,6 +27,7 @@ body {
     background-color: var(--bg-color);
     color: var(--text-main);
     overflow: hidden; /* 防止整个页面出现难看的滚动条 */
+    transition: background-color 0.3s, color 0.3s;
 }
 
 .hidden { display: none !important; }
@@ -243,3 +255,130 @@ textarea {
 /* 状态标签 */
 .status-badge { font-size: 12px; padding: 4px 10px; border-radius: 12px; margin-left: 10px; background: #e2e8f0; color: #475569; }
 .server-msg { font-size: 12px; color: var(--text-muted); margin-left: 10px; max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* 文本差异高亮样式 */
+.diff-insert {
+    background-color: #d1fae5;
+    color: #065f46;
+    text-decoration: underline;
+    text-decoration-color: #10b981;
+}
+
+.diff-delete {
+    background-color: #fee2e2;
+    color: #991b1b;
+    text-decoration: line-through;
+    text-decoration-color: #ef4444;
+}
+
+/* 差异对比模式下的结果框 */
+#polished-text.diff-mode {
+    font-family: inherit;
+    line-height: 1.8;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+/* 对比切换按钮 */
+.diff-toggle-btn {
+    padding: 4px 12px;
+    font-size: 12px;
+    background-color: #f1f5f9;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    cursor: pointer;
+    margin-left: 10px;
+    transition: all 0.2s;
+}
+
+.diff-toggle-btn:hover {
+    background-color: #e2e8f0;
+}
+
+.diff-toggle-btn.active {
+    background-color: #3b82f6;
+    color: white;
+    border-color: #3b82f6;
+}
+
+/* 主题切换按钮 */
+.theme-toggle-btn {
+    padding: 6px 12px;
+    font-size: 18px;
+    background-color: var(--panel-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    cursor: pointer;
+    margin-left: 10px;
+    transition: all 0.2s;
+}
+
+.theme-toggle-btn:hover {
+    background-color: var(--bg-color);
+}
+
+/* 进度条容器 */
+.progress-container {
+    width: 100%;
+    height: 4px;
+    background-color: var(--border-color);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 8px;
+    display: none;
+}
+
+.progress-container.active {
+    display: block;
+}
+
+.progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #3b82f6, #10b981);
+    width: 0%;
+    transition: width 0.3s ease;
+}
+
+/* 错误提示框 */
+.error-toast {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background-color: #fee2e2;
+    color: #991b1b;
+    padding: 16px 20px;
+    border-radius: 8px;
+    border-left: 4px solid #ef4444;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    max-width: 400px;
+    z-index: 9999;
+    animation: slideIn 0.3s ease;
+}
+
+[data-theme="dark"] .error-toast {
+    background-color: #7f1d1d;
+    color: #fecaca;
+    border-left-color: #dc2626;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(400px);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.error-toast-title {
+    font-weight: 600;
+    margin-bottom: 4px;
+    font-size: 14px;
+}
+
+.error-toast-message {
+    font-size: 13px;
+    line-height: 1.4;
+}

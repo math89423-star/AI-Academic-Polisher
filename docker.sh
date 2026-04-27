@@ -48,7 +48,7 @@ echo "✅ Web 服务启动成功 (PID: $WEB_PID)，运行端口: 8020"
 # ==========================================
 # 3. 启动后台处理引擎 (RQ Workers)
 # ==========================================
-WORKER_COUNT=15 
+WORKER_COUNT=16  # 降低 worker 数量，减少 Redis 连接压力 
 echo "📍 连接 Redis: $REDIS_URL"
 echo "📦 监听队列: ai_tasks"
 echo "🔢 即将启动并行 Worker 数量: $WORKER_COUNT"
@@ -56,7 +56,8 @@ echo "------------------------------------------"
 
 for i in $(seq 1 $WORKER_COUNT)
 do
-    python run_worker.py > /dev/null 2>&1 &
+    # 🟢 致命修复：停止将日志扔进黑洞，改为追加到 worker.log 文件中！
+    python run_worker.py >> worker.log 2>&1 &
     sleep 0.5 
 done
 

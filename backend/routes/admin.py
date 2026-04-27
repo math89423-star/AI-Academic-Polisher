@@ -17,7 +17,10 @@ def list_users():
     users = User.query.all()
     return jsonify([{
         "id": u.id, "username": u.username, "role": u.role,
-        "usage_count": u.usage_count, "api_config_id": u.api_config_id
+        "usage_count": u.usage_count,
+        "api_config_id": u.api_config_id,
+        "api_config_id_standard": u.api_config_id_standard,
+        "api_config_id_strict": u.api_config_id_strict
     } for u in users])
 
 @admin_bp.route('/users', methods=['POST'])
@@ -48,14 +51,23 @@ def add_user():
 def update_user_api_config():
     data = request.json
     if not check_admin(data.get('admin_username')): return jsonify({"error": "无权访问"}), 403
-    
+
     user = User.query.filter_by(username=data['target_username']).first()
     if not user: return jsonify({"error": "用户不存在"}), 404
-    
-    # 安全处理线路置空
+
+    # 支持更新不同模式的线路配置
+    mode = data.get('mode', 'legacy')  # 'standard', 'strict', 'legacy'
     api_config_id = data.get('api_config_id')
-    user.api_config_id = api_config_id if api_config_id else None
-    
+    api_config_id = api_config_id if api_config_id else None
+
+    if mode == 'standard':
+        user.api_config_id_standard = api_config_id
+    elif mode == 'strict':
+        user.api_config_id_strict = api_config_id
+    else:
+        # 兼容旧版单一线路配置
+        user.api_config_id = api_config_id
+
     db.session.commit()
     return jsonify({"message": "配置更新成功"})
 
@@ -107,13 +119,40 @@ def add_api_config():
 @admin_bp.route('/api_configs/<int:config_id>', methods=['DELETE'])
 def delete_api_config(config_id):
     if not check_admin(request.args.get('admin_username')): return jsonify({"error": "无权访问"}), 403
-    
+
     conf = ApiConfig.query.get(config_id)
     if not conf: return jsonify({"error": "线路不存在"}), 404
-    
+
     # 如果删除了线路，把正在使用该线路的用户回退到系统默认线路 (None)
     User.query.filter_by(api_config_id=config_id).update({'api_config_id': None})
-    
+    User.query.filter_by(api_config_id_standard=config_id).update({'api_config_id_standard': None})
+    User.query.filter_by(api_config_id_strict=config_id).update({'api_config_id_strict': None})
+
     db.session.delete(conf)
     db.session.commit()
     return jsonify({"message": "线路已彻底销毁"})
+
+# 批量更新用户线路配置
+@admin_bp.route('/users/batch_update_config', methods=['POST'])
+def batch_update_user_config():
+    data = request.json
+    if not check_admin(data.get('admin_username')): return jsonify({"error": "无权访问"}), 403
+
+    usernames = data.get('usernames', [])
+    mode = data.get('mode')  # 'standard' or 'strict'
+    api_config_id = data.get('api_config_id')
+    api_config_id = api_config_id if api_config_id else None
+
+    if not usernames or not mode:
+        return jsonify({"error": "参数不完整"}), 400
+
+    users = User.query.filter(User.username.in_(usernames)).all()
+
+    for user in users:
+        if mode == 'standard':
+            user.api_config_id_standard = api_config_id
+        elif mode == 'strict':
+            user.api_config_id_strict = api_config_id
+
+    db.session.commit()
+    return jsonify({"message": f"已批量更新 {len(users)} 个用户的{mode}模式线路"})

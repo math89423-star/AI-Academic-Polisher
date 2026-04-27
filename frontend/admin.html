@@ -20,11 +20,11 @@
         .logout-admin { background: #fee2e2; color: #ef4444; border: 1px solid #f87171; padding: 6px 15px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; transition: 0.2s; }
         .logout-admin:hover { background: #fca5a5; color: white; }
 
-        .container-box { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
+        .container-box { max-width: 1400px; margin: 0 auto; padding: 0 20px; }
         .admin-layout { display: flex; gap: 25px; align-items: flex-start; }
 
         /* 左侧面板 */
-        .sidebar { width: 320px; background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; flex-shrink: 0; }
+        .sidebar { width: 360px; background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; flex-shrink: 0; }
         .sidebar h3 { margin-top: 0; color: #0f172a; border-bottom: 2px solid #3b82f6; display: inline-block; padding-bottom: 8px; margin-bottom: 20px; font-size: 16px;}
         .form-group { margin-bottom: 18px; }
         .form-group label { display: block; font-size: 13px; color: #64748b; margin-bottom: 6px; font-weight: 500; }
@@ -37,17 +37,17 @@
         .main-content { flex: 1; background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; overflow-x: auto; }
         .main-content h3 { margin-top: 0; color: #0f172a; font-size: 18px; margin-bottom: 20px; }
         
-        table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 14px; }
-        th, td { padding: 14px 15px; text-align: left; border-bottom: 1px solid #f1f5f9; }
-        th { background-color: #f8fafc; font-weight: 600; color: #475569; text-transform: uppercase; font-size: 12px; letter-spacing: 0.5px; }
+        table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 15px; table-layout: auto; }
+        th, td { padding: 14px 15px; text-align: left; border-bottom: 1px solid #f1f5f9; white-space: nowrap; }
+        th { background-color: #f8fafc; font-weight: 600; color: #475569; text-transform: uppercase; font-size: 13px; letter-spacing: 0.5px; }
         tr:hover td { background-color: #f8fafc; }
         
-        .role-badge { padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+        .role-badge { padding: 4px 10px; border-radius: 12px; font-size: 13px; font-weight: 600; }
         .role-admin { background: #fee2e2; color: #dc2626; }
         .role-user { background: #dcfce3; color: #16a34a; }
         
-        .api-select { padding: 6px 10px; border-radius: 4px; border: 1px solid #cbd5e1; font-size: 13px; outline: none; background: #fff; cursor: pointer;}
-        .delete-btn { background: #ef4444; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500; transition: 0.2s; }
+        .api-select { padding: 6px 8px; border-radius: 4px; border: 1px solid #cbd5e1; font-size: 13px; outline: none; background: #fff; cursor: pointer; min-width: 180px; max-width: 220px; }
+        .delete-btn { background: #ef4444; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 500; transition: 0.2s; }
         .delete-btn:hover { background: #dc2626; }
     </style>
 </head>
@@ -124,14 +124,21 @@
                 
                 <div class="main-content">
                     <h3>👥 全局用户监管列表</h3>
+                    <div style="margin-bottom: 15px; display: flex; gap: 10px; align-items: center;">
+                        <button id="batch-update-standard-btn" style="padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px;">批量更换标准模式线路</button>
+                        <button id="batch-update-strict-btn" style="padding: 8px 16px; background: #8b5cf6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px;">批量更换极致模式线路</button>
+                        <span id="selected-count" style="color: #64748b; font-size: 13px;">已选择 0 个用户</span>
+                    </div>
                     <table style="margin-bottom: 40px;">
                         <thead>
                             <tr>
-                                <th>授权用户名</th>
-                                <th>角色状态</th>
-                                <th style="width: 200px;">AI 线路路由调度</th>
-                                <th>任务调用量</th>
-                                <th>危险操作</th>
+                                <th style="width: 40px;"><input type="checkbox" id="select-all-users"></th>
+                                <th style="min-width: 100px;">授权用户名</th>
+                                <th style="min-width: 80px;">角色状态</th>
+                                <th style="min-width: 200px;">标准模式线路</th>
+                                <th style="min-width: 200px;">极致模式线路</th>
+                                <th style="min-width: 90px;">任务调用量</th>
+                                <th style="min-width: 90px;">危险操作</th>
                             </tr>
                         </thead>
                         <tbody id="user-table-body"></tbody>

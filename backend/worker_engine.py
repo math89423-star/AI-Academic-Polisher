@@ -17,19 +17,37 @@ def process_task(task_id):
         if not task: return
         user = User.query.get(task.user_id)
         channel_name = f"stream:task:{task_id}"
-        
+
         print(f"\n=======================================")
         print(f"🚀 [Worker] 开始处理任务 ID: {task_id}")
         print(f"=======================================\n")
-        
+
         api_key, base_url, model_name = None, None, 'gpt-3.5-turbo'
-        if user and user.api_config:
-            api_key, base_url, model_name = user.api_config.api_key, user.api_config.base_url, user.api_config.model_name
-        else:
+
+        # 根据任务策略选择对应的 API 配置
+        if user:
+            strategy = getattr(task, 'strategy', 'standard')
+
+            # 优先使用用户的策略专属配置
+            if strategy == 'strict' and user.api_config_id_strict:
+                config = ApiConfig.query.get(user.api_config_id_strict)
+                if config:
+                    api_key, base_url, model_name = config.api_key, config.base_url, config.model_name
+            elif strategy == 'standard' and user.api_config_id_standard:
+                config = ApiConfig.query.get(user.api_config_id_standard)
+                if config:
+                    api_key, base_url, model_name = config.api_key, config.base_url, config.model_name
+
+            # 如果策略专属配置不存在，回退到旧版单一配置
+            if not api_key and user.api_config:
+                api_key, base_url, model_name = user.api_config.api_key, user.api_config.base_url, user.api_config.model_name
+
+        # 如果用户没有配置，使用系统默认配置
+        if not api_key or not base_url:
             default_config = ApiConfig.query.first()
             if default_config:
                 api_key, base_url, model_name = default_config.api_key, default_config.base_url, default_config.model_name
-        
+
         if not api_key or not base_url:
             _publish_error(channel_name, "系统未配置可用的 API 线路。")
             task.status = 'failed'
@@ -52,13 +70,13 @@ def process_task(task_id):
                 total_chunks = len(chunks)
                 
                 if total_chunks <= 1:
-                    # 🟢 新增：由于 Two-Pass 需要后台思考，给用户发送安抚提示！
-                    _publish_message(channel_name, "block", "🧠 系统已启用【二次深度提纯】引擎...\n⏳ AI 正在后台默默进行深度思考与草稿构建（此阶段无输出，约需 10~30 秒，请耐心等待，切勿刷新页面）...\n\n")
-                    
+                    # 流式输出提示
+                    _publish_message(channel_name, "block", "🚀 AI 正在实时生成润色内容...\n\n")
+
                     full_text = task.polished_text or ""
                     generator = pure_ai_generator(
                         text=task.original_text, api_key=api_key, base_url=base_url,
-                        model_name=model_name, mode=task.mode, history_text=task.polished_text
+                        model_name=model_name, mode=task.mode, strategy=task.strategy, history_text=task.polished_text
                     )
                     for chunk in generator:
                         cancel_key = f"cancel:task:{task_id}"
@@ -81,10 +99,10 @@ def process_task(task_id):
                     chunks_to_process = [(i, txt) for i, txt in enumerate(chunks) if i not in done_dict]
                     
                     if chunks_to_process:
-                        _publish_message(channel_name, "block", f"📝 长文本切片成功！共 {total_chunks} 个片段。\n🚀 【多线程并发+深度提纯】引擎已激活（首批片段需要静默思考，请稍候）...\n\n")
+                        _publish_message(channel_name, "block", f"📝 长文本切片成功！共 {total_chunks} 个片段。\n🚀 【多线程并发】引擎已激活，正在处理...\n\n")
                         
                         def process_single_chunk(chunk_idx, text_content):
-                            res = sync_ai_request(text=text_content, api_key=api_key, base_url=base_url, model_name=model_name, mode=task.mode)
+                            res = sync_ai_request(text=text_content, api_key=api_key, base_url=base_url, model_name=model_name, mode=task.mode, strategy=task.strategy)
                             return chunk_idx, res
 
                         completed_count = len(done_dict)
@@ -120,9 +138,10 @@ def process_task(task_id):
                         if is_cancelled: return
                             
                     final_text_parts = [done_dict.get(i, chunks[i]) for i in range(total_chunks)]
-                    final_text = "\n\n".join(final_text_parts) 
+                    final_text = "\n\n".join(final_text_parts)
                     task.polished_text = final_text
                     _publish_message(channel_name, "stream", final_text)
+                    # 清理 Redis 缓存
                     redis_client.delete(progress_key)
 
             # ==========================================
@@ -149,17 +168,17 @@ def process_task(task_id):
                         
                 total_paras = len(paras_to_process)
                 if total_paras > 0:
-                    _publish_message(channel_name, "block", f"📄 解析成功！共提取 {total_paras} 个核心段落待处理。\n🚀 【多线程+二次提纯引擎】已激活（初始阶段需后台思考，请稍候）...\n\n")
+                    _publish_message(channel_name, "block", f"📄 解析成功！共提取 {total_paras} 个核心段落待处理。\n🚀 【多线程并发】引擎已激活，正在处理...\n\n")
                     
                     def process_single_para(para_idx, text_content):
                         if len(text_content) > 600:
                             sub_chunks = split_text_into_chunks(text_content, max_chars=600)
                             polished_sub = []
                             for sc in sub_chunks:
-                                polished_sub.append(sync_ai_request(text=sc, api_key=api_key, base_url=base_url, model_name=model_name, mode=task.mode))
+                                polished_sub.append(sync_ai_request(text=sc, api_key=api_key, base_url=base_url, model_name=model_name, mode=task.mode, strategy=task.strategy))
                             return para_idx, "".join(polished_sub)
                         else:
-                            return para_idx, sync_ai_request(text=text_content, api_key=api_key, base_url=base_url, model_name=model_name, mode=task.mode)
+                            return para_idx, sync_ai_request(text=text_content, api_key=api_key, base_url=base_url, model_name=model_name, mode=task.mode, strategy=task.strategy)
 
                     results_dict = {}
                     completed_count = 0
@@ -200,8 +219,9 @@ def process_task(task_id):
                 output_path = os.path.join('outputs', f"polished_{task.id}.docx")
                 doc.save(output_path)
                 task.result_file_path = output_path
-                redis_client.delete(done_indices_key) 
-                redis_client.delete(f"docx_progress:task:{task_id}") 
+                # 清理 Redis 缓存
+                redis_client.delete(done_indices_key)
+                redis_client.delete(f"docx_progress:task:{task_id}")
                 _publish_message(channel_name, "block", "\n\n🎉 全局高并发重排完毕，正在生成下载链接...\n")
 
             # ==========================================
@@ -218,6 +238,14 @@ def process_task(task_id):
                 _publish_message(channel_name, "download", f"/api/tasks/download/{task.id}")
             
             _publish_message(channel_name, "done", "完成")
+
+            # 任务完成后，延迟清理 channel（给前端 5 秒接收时间）
+            import time
+            time.sleep(5)
+            # 清理可能残留的 cancel key
+            cancel_key = f"cancel:task:{task_id}"
+            redis_client.delete(cancel_key)
+
             print("🎉 [Worker] 任务彻底完成并退出！")
             
         except Exception as e:

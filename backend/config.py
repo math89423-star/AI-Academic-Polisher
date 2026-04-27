@@ -19,12 +19,12 @@ class Config:
     SQLALCHEMY_DATABASE_URI = f"mysql+mysqlconnector://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}?charset=utf8mb4"
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
-    # 高并发数据库连接池配置
+    # 高并发数据库连接池配置（优化：避免连接池过大）
     SQLALCHEMY_ENGINE_OPTIONS = {
-        "pool_size": 50,           
-        "max_overflow": 50,        
-        "pool_recycle": 1800,      
-        "pool_pre_ping": True,     
+        "pool_size": 16,           # 降低基础连接池（4 gunicorn workers + 余量）
+        "max_overflow": 24,        # 降低溢出连接数
+        "pool_recycle": 1800,
+        "pool_pre_ping": True,
         "pool_timeout": 30,
         "connect_args": {"charset": "utf8mb4", "collation": "utf8mb4_unicode_ci"}
     }
@@ -35,7 +35,7 @@ class Config:
 
     # --- Redis 与并发配置 ---
     REDIS_URL = os.environ.get('REDIS_URL', 'redis://127.0.0.1:6379/0')
-    MAX_AI_WORKERS = int(os.environ.get('MAX_AI_WORKERS', 20))
+    MAX_AI_WORKERS = int(os.environ.get('MAX_AI_WORKERS',32))
 
     # [新增] --- 管理员配置 ---
     ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'admin')

@@ -4,18 +4,38 @@ from flask import Blueprint, request, jsonify, Response
 from backend.extensions import db, task_queue, redis_client
 from backend.model.models import User, Task
 from backend.utils.helpers import extract_title, split_text_into_chunks
+from backend.utils.text_hash import check_duplicate_text, store_text_hash
 import os
 from werkzeug.utils import secure_filename
 from flask import send_file
 
 task_bp = Blueprint('task', __name__)
 
+@task_bp.route('/check_duplicate', methods=['POST'])
+def check_duplicate():
+    """检查文本是否重复"""
+    data = request.json
+    username = data.get('username', '').strip()
+    text = data.get('text', '').strip()
+
+    user = User.query.filter_by(username=username).first()
+    if not user:
+        return jsonify({"error": "无效用户"}), 401
+
+    if not text:
+        return jsonify({"is_duplicate": False}), 200
+
+    # 检查是否重复（24小时内）
+    result = check_duplicate_text(redis_client, text, user.id, hours=24)
+    return jsonify(result), 200
+
 @task_bp.route('/create', methods=['POST'])
 def create_task():
     data = request.json
-    username = data.get('username', '').strip() 
+    username = data.get('username', '').strip()
     original_text = data.get('text', '').strip()
     mode = data.get('mode', 'zh').strip()
+    strategy = data.get('strategy', 'standard').strip()
 
     user = User.query.filter_by(username=username).first()
     if not user: return jsonify({"error": "无效的卡密"}), 401
@@ -24,16 +44,20 @@ def create_task():
 
     # 创建任务并扣除次数
     task = Task(
-        user_id=user.id, 
-        title=extract_title(original_text), 
-        original_text=original_text, 
-        mode=mode,  # 保存模式
+        user_id=user.id,
+        title=extract_title(original_text),
+        original_text=original_text,
+        mode=mode,
+        strategy=strategy,
         status='queued'
     )
     user.usage_count += 1
     db.session.add(task)
     db.session.commit()
-    
+
+    # 存储文本哈希（用于去重检测）
+    store_text_hash(redis_client, original_text, user.id, task.id, hours=24)
+
     # 将任务丢给后台 RQ Worker 进程
     task_queue.enqueue('backend.worker_engine.process_task', task.id)
     return jsonify({"task_id": task.id, "title": task.title}), 201
@@ -45,24 +69,36 @@ def stream_results(task_id):
         pubsub = redis_client.pubsub()
         channel_name = f"stream:task:{task_id}"
         pubsub.subscribe(channel_name)
-        
+
         try:
             # 🟢 修复 SyntaxError: 将 json.dumps 提取到变量中，避开 f-string 的反斜杠限制
             import json
             initial_payload = json.dumps({'type': 'block', 'content': '⏳ 已连接到推送通道，等待 AI 响应...\n\n'})
             yield f"data: {initial_payload}\n\n"
-            
+
+            # 添加超时机制，避免僵尸连接
+            import time
+            last_message_time = time.time()
+            timeout = 600  # 10分钟超时
+
             for message in pubsub.listen():
+                # 检查超时
+                if time.time() - last_message_time > timeout:
+                    error_payload = json.dumps({'type': 'fatal', 'content': '连接超时，请刷新页面重试'})
+                    yield f"data: {error_payload}\n\n"
+                    break
+
                 if message['type'] == 'message':
                     raw_data = message['data']
                     yield raw_data
-                    
+                    last_message_time = time.time()
+
                     if '"type": "done"' in raw_data or '"type": "fatal"' in raw_data:
                         break
         finally:
             pubsub.unsubscribe(channel_name)
             pubsub.close()
-            
+
     return Response(generate(), mimetype='text/event-stream')
 
 @task_bp.route('/history', methods=['GET'])

@@ -8,7 +8,7 @@
 </head>
 <body>
     <div id="login-container">
-        <h2>系统登录</h2>
+        <h2>AIpolish 内部系统登录</h2>
         <p style="color: #64748b; margin-top: 0;">请输入您的授权用户名</p>
         <input type="text" id="username-input" placeholder="请输入用户名...">
         <button id="login-btn">验证登录</button>
@@ -79,13 +79,15 @@
                     <div class="box-header">
                         <h3>润色结果</h3>
                         <div style="display: flex; align-items: center;">
+                            <button id="diff-toggle-btn" class="diff-toggle-btn hidden">📊 对比模式</button>
+                            <button id="copy-result-btn" class="diff-toggle-btn hidden" style="margin-left: 5px;">📋 复制</button>
                             <span id="status-box" class="status-badge">待命</span>
                             <span id="server-msg" class="server-msg"></span>
                             <a id="download-result-btn" class="hidden" target="_blank" style="padding: 4px 10px; font-size: 13px; margin-left: 10px; background-color: #10b981; color: white; border-radius: 4px; text-decoration: none; font-weight: 500;">📥 下载 Word</a>
                         </div>
                     </div>
                     <div class="content-area">
-                        <textarea id="polished-text" class="result-box" readonly placeholder="润色结果将在这里流式输出..."></textarea>
+                        <div id="polished-text" class="result-box" contenteditable="false" style="overflow-y: auto; padding: 20px; font-size: 14.5px; line-height: 1.6; color: var(--text-main); background-color: #fafafa; white-space: pre-wrap; word-wrap: break-word;">润色结果将在这里流式输出...</div>
                     </div>
                 </div>
 
@@ -93,6 +95,7 @@
         </div>
     </div>
 
+    <script src="js/diff.js"></script>
     <script src="js/main.js"></script>
 </body>
 </html>

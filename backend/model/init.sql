@@ -35,8 +35,12 @@ CREATE TABLE IF NOT EXISTS users (
     usage_count INT DEFAULT 0,
     is_active BOOLEAN DEFAULT TRUE,
     api_config_id INT NULL,
+    api_config_id_standard INT NULL,
+    api_config_id_strict INT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (api_config_id) REFERENCES api_configs(id) ON DELETE SET NULL,
+    FOREIGN KEY (api_config_id_standard) REFERENCES api_configs(id) ON DELETE SET NULL,
+    FOREIGN KEY (api_config_id_strict) REFERENCES api_configs(id) ON DELETE SET NULL,
     INDEX idx_username (username)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
