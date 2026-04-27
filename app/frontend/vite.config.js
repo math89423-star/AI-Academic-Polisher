@@ -5,7 +5,7 @@ import { resolve } from 'path'
 export default defineConfig({
   plugins: [vue()],
   build: {
-    outDir: '../backend/static',
+    outDir: 'dist',
     emptyOutDir: true,
     rollupOptions: {
       input: {
