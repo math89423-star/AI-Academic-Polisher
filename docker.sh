@@ -41,9 +41,9 @@ fi
 # 2. 启动 Web 服务端 (基于 Gunicorn/Gthread)
 # ==========================================
 echo "🌐 正在启动高并发 Web 服务 (多线程模式)..."
-gunicorn -k gthread -w 4 --threads 50 -b 0.0.0.0:8020 "main:app" > web_access.log 2> web_error.log &
+gunicorn -k gthread -w 4 --threads 50 -b 0.0.0.0:5000 "main:app" > web_access.log 2> web_error.log &
 WEB_PID=$!
-echo "✅ Web 服务启动成功 (PID: $WEB_PID)，运行端口: 8020"
+echo "✅ Web 服务启动成功 (PID: $WEB_PID)，运行端口: 5000"
 
 # ==========================================
 # 3. 启动后台处理引擎 (RQ Workers)

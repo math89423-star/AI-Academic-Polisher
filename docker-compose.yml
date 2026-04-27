@@ -10,7 +10,7 @@ services:
     extra_hosts:                               
       - "api.devdove.cc:108.162.198.183"
     ports:
-      - "8020:8020"
+      - "5000:5000"
     env_file:
       - .env
     volumes:

@@ -7,7 +7,7 @@ load_dotenv()
 class Config:
     # --- 服务运行配置 ---
     APP_HOST = os.environ.get('APP_HOST', '0.0.0.0')
-    APP_PORT = int(os.environ.get('APP_PORT', 8000))
+    APP_PORT = int(os.environ.get('APP_PORT', 5000))
 
     # --- 数据库配置 ---
     DB_USER = os.environ.get('DB_USER', 'root')
