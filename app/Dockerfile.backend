@@ -17,13 +17,12 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
 
 # 只复制后端相关文件
-COPY app/backend ./backend
+COPY backend ./backend
 COPY main.py .
 COPY run_worker.py .
-COPY .env .
 
 # 复制后端启动脚本
-COPY docker-backend.sh .
+COPY scripts/docker-backend.sh .
 RUN chmod +x docker-backend.sh
 
 EXPOSE 5000

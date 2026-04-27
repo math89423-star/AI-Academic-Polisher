@@ -3,10 +3,10 @@ FROM node:18-alpine as builder
 WORKDIR /app
 
 # 复制前端源码
-COPY app/frontend/package*.json ./
+COPY frontend/package*.json ./
 RUN npm install
 
-COPY app/frontend/ ./
+COPY frontend/ ./
 
 # 构建前端静态文件
 RUN npm run build

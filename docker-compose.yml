@@ -10,7 +10,7 @@ services:
       - "80:80"
       - "8080:8080"
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./app/config/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
       - backend
       - frontend
@@ -20,7 +20,7 @@ services:
   # 前端应用
   frontend:
     build:
-      context: .
+      context: ./app
       dockerfile: Dockerfile.frontend
     container_name: aipolish_frontend
     restart: always
@@ -30,7 +30,7 @@ services:
   # 后端应用
   backend:
     build:
-      context: .
+      context: ./app
       dockerfile: Dockerfile.backend
     container_name: aipolish_backend
     restart: always
@@ -64,7 +64,6 @@ services:
       TZ: Asia/Shanghai
     volumes:
       - ./mysql_data:/var/lib/mysql
-      - ./app/backend/model/init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - aipolish-network
 
@@ -77,7 +76,7 @@ services:
       - "6379:6379"
     volumes:
       - ./redis_data:/data
-      - ./redis.conf:/usr/local/etc/redis/redis.conf
+      - ./app/config/redis.conf:/usr/local/etc/redis/redis.conf
     command: redis-server /usr/local/etc/redis/redis.conf
     networks:
       - aipolish-network
