@@ -22,6 +22,8 @@
           :current-task="taskStore.currentTask"
           :strategies="taskStore.strategies"
           @task-created="handleTaskCreated"
+          @cancel="handleCancel"
+          @resume="handleResume"
         />
 
         <ResultPanel
