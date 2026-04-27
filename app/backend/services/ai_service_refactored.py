@@ -7,7 +7,7 @@ from backend.services.ai_client import AIClient
 from backend.services.prompt_builder import PromptBuilder, APIParameterGenerator
 from backend.services.response_extractor import ResponseExtractor
 from backend.services.retry_policy import RetryPolicy
-from backend.prompts_config import STRATEGIES
+from backend.prompts_config import STRATEGIES, load_continuation_prompt
 from backend.utils.logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -45,7 +45,7 @@ class AIService:
             str: 生成的文本片段
         """
         user_content = f"原文：\n{text}"
-        continue_prompt = "由于任务中断，请继续润色。注意：直接输出，不要重复，不要寒暄解释。"
+        continue_prompt = load_continuation_prompt()
 
         messages = [
             {"role": "system", "content": self.prompt_builder.build_prompt(mode, strategy)},
