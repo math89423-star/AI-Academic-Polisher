@@ -101,6 +101,7 @@ def stream_results(task_id):
     """SSE流式推送任务结果"""
     def generate():
         from backend.model.models import Task
+        from backend.config import SSEConfig
         import time
 
         pubsub = redis_client.pubsub()
@@ -127,10 +128,13 @@ def stream_results(task_id):
                 return
 
             last_message_time = time.time()
-            timeout = 600
+            timeout = SSEConfig.TIMEOUT
+            heartbeat_interval = SSEConfig.HEARTBEAT_INTERVAL
 
-            for message in pubsub.listen():
-                if time.time() - last_message_time > timeout:
+            while True:
+                now = time.time()
+
+                if now - last_message_time > timeout:
                     error_payload = json.dumps({
                         'type': 'fatal',
                         'content': '连接超时，请刷新页面重试'
@@ -138,13 +142,17 @@ def stream_results(task_id):
                     yield f"data: {error_payload}\n\n"
                     break
 
-                if message['type'] == 'message':
+                message = pubsub.get_message(timeout=heartbeat_interval)
+
+                if message and message['type'] == 'message':
                     raw_data = message['data']
                     yield raw_data
                     last_message_time = time.time()
 
                     if '"type": "done"' in raw_data or '"type": "fatal"' in raw_data:
                         break
+                else:
+                    yield ": heartbeat\n\n"
 
         finally:
             pubsub.unsubscribe(channel_name)

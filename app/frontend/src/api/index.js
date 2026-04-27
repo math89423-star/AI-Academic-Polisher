@@ -108,22 +108,45 @@ export const taskAPI = {
 
   // SSE 流式连接
   connectSSE(taskId, onMessage, onError) {
-    const eventSource = new EventSource(`${API_BASE}/tasks/${taskId}/stream`)
+    let retryCount = 0
+    const maxRetries = 5
+    let eventSource = null
+    let closed = false
 
-    eventSource.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data)
-        onMessage(data)
-      } catch (err) {
-        console.error('SSE parse error:', err)
+    function connect() {
+      eventSource = new EventSource(`${API_BASE}/tasks/${taskId}/stream`)
+
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data)
+          retryCount = 0
+          onMessage(data)
+        } catch (err) {
+          console.error('SSE parse error:', err)
+        }
+      }
+
+      eventSource.onerror = () => {
+        eventSource.close()
+        if (closed) return
+        if (retryCount < maxRetries) {
+          retryCount++
+          const delay = Math.min(1000 * retryCount, 5000)
+          setTimeout(connect, delay)
+        } else {
+          onError(new Error('SSE 重连失败'))
+        }
       }
     }
 
-    eventSource.onerror = (err) => {
-      eventSource.close()
-      onError(err)
-    }
+    connect()
 
-    return eventSource
+    const proxy = {
+      close() {
+        closed = true
+        if (eventSource) eventSource.close()
+      }
+    }
+    return proxy
   }
 }

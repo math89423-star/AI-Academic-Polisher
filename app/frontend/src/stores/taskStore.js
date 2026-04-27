@@ -65,7 +65,7 @@ export const useTaskStore = defineStore('task', () => {
     const data = await taskAPI.createTask(username, text, mode, strategy)
     const newTask = {
       id: data.task_id,
-      time: new Date().toLocaleString('zh-CN'),
+      time: new Date().toISOString(),
       original: text,
       polished: '',
       status: 'queued',
@@ -83,7 +83,7 @@ export const useTaskStore = defineStore('task', () => {
     const data = await taskAPI.uploadDocx(username, file, mode, strategy)
     const newTask = {
       id: data.task_id,
-      time: new Date().toLocaleString('zh-CN'),
+      time: new Date().toISOString(),
       original: '',
       polished: '',
       status: 'queued',
