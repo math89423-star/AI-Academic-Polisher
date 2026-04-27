@@ -79,9 +79,11 @@ export const taskAPI = {
     return res.json()
   },
 
-  async resumeTask(taskId) {
+  async resumeTask(taskId, username) {
     const res = await fetch(`${API_BASE}/tasks/${taskId}/resume`, {
-      method: 'POST'
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username })
     })
     if (!res.ok) throw new Error('恢复任务失败')
     return res.json()
@@ -106,6 +108,12 @@ export const taskAPI = {
     return res.json()
   },
 
+  async getTaskDetail(taskId) {
+    const res = await fetch(`${API_BASE}/tasks/${taskId}/detail`)
+    if (!res.ok) throw new Error('获取任务详情失败')
+    return res.json()
+  },
+
   // SSE 流式连接
   connectSSE(taskId, onMessage, onError) {
     let retryCount = 0
@@ -126,9 +134,27 @@ export const taskAPI = {
         }
       }
 
-      eventSource.onerror = () => {
+      eventSource.onerror = async () => {
         eventSource.close()
         if (closed) return
+
+        // 重连前检查任务状态，避免对已完成任务无限重连
+        try {
+          const res = await fetch(`${API_BASE}/tasks/${taskId}/detail`)
+          if (res.ok) {
+            const detail = await res.json()
+            if (detail.status === 'completed' || detail.status === 'failed' || detail.status === 'cancelled') {
+              onMessage({
+                type: detail.status === 'completed' ? 'done' : 'fatal',
+                content: detail.status === 'completed'
+                  ? { download_url: detail.download_url || '' }
+                  : '任务已结束'
+              })
+              return
+            }
+          }
+        } catch (e) { /* 状态检查失败则继续重连逻辑 */ }
+
         if (retryCount < maxRetries) {
           retryCount++
           const delay = Math.min(1000 * retryCount, 5000)

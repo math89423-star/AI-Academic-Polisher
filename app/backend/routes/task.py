@@ -133,7 +133,7 @@ def stream_results(task_id):
 
             task = Task.query.get(task_id)
             if task and task.status == 'completed' and task.polished_text:
-                done_payload = json.dumps({'type': 'stream', 'content': task.polished_text})
+                done_payload = json.dumps({'type': 'full', 'content': task.polished_text})
                 yield f"data: {done_payload}\n\n"
                 finish_payload = json.dumps({'type': 'done', 'content': '完成'})
                 yield f"data: {finish_payload}\n\n"

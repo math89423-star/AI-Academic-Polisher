@@ -56,8 +56,12 @@ class ProgressPublisher:
         self.publish_message("chunk", content)
 
     def publish_stream(self, content: str) -> None:
-        """推送流式内容"""
+        """推送流式内容（增量追加）"""
         self.publish_message("stream", content)
+
+    def publish_full(self, content: str) -> None:
+        """推送完整结果（替换而非追加）"""
+        self.publish_message("full", content)
 
     def publish_block(self, content: str) -> None:
         """推送块消息"""

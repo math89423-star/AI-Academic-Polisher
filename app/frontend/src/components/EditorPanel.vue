@@ -93,7 +93,7 @@
           style="background-color: #10b981;"
           @click="$emit('resume')"
         >
-          ▶️ 继续执行
+          {{ currentTask?.status === 'completed' ? '🔄 重新润色' : '▶️ 继续执行' }}
         </button>
       </div>
     </div>
@@ -133,7 +133,7 @@ const showCancel = computed(() => {
 })
 
 const showResume = computed(() => {
-  return props.currentTask && ['cancelled', 'failed'].includes(props.currentTask.status)
+  return props.currentTask && ['cancelled', 'failed', 'completed'].includes(props.currentTask.status)
 })
 
 watch(() => props.currentTask, (task) => {

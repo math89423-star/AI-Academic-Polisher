@@ -216,8 +216,13 @@ class TaskService:
         if not task or task.user_id != user_id:
             raise ValueError("无权操作此任务")
 
-        if task.status not in ['cancelled', 'failed']:
+        if task.status not in ['cancelled', 'failed', 'completed']:
             raise ValueError("当前状态无法恢复")
+
+        # 重新润色时清除旧结果
+        if task.status == 'completed':
+            task.polished_text = None
+            task.result_file_path = None
 
         # 重置状态，重新入队
         task.status = 'queued'

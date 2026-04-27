@@ -77,7 +77,7 @@ const handleCancel = async () => {
 
 const handleResume = async () => {
   if (taskStore.currentTaskId) {
-    await taskStore.resumeTask(taskStore.currentTaskId)
+    await taskStore.resumeTask(taskStore.currentTaskId, props.username)
   }
 }
 

@@ -111,6 +111,8 @@ export const useTaskStore = defineStore('task', () => {
       task.serverInfo = c.message || data.message || ''
     } else if (data.type === 'chunk' || data.type === 'stream') {
       task.polished += (typeof data.content === 'string' ? data.content : '')
+    } else if (data.type === 'full') {
+      task.polished = typeof data.content === 'string' ? data.content : ''
     } else if (data.type === 'block') {
       task.serverInfo = typeof data.content === 'string' ? data.content : ''
     } else if (data.type === 'progress') {
@@ -120,8 +122,13 @@ export const useTaskStore = defineStore('task', () => {
       const c = data.content || {}
       task.downloadUrl = (typeof c === 'object' ? c.download_url : '') || ''
       task.serverInfo = ''
+      // SSE 断连后通过 detail 接口补全润色结果
+      if (!task.polished && task.task_type === 'text') {
+        taskAPI.getTaskDetail(taskId).then(detail => {
+          if (detail && detail.polished_text) task.polished = detail.polished_text
+        }).catch(() => {})
+      }
       sse.stop()
-      setTimeout(() => { window.location.reload() }, 500)
     } else if (data.type === 'error' || data.type === 'fatal') {
       task.status = 'failed'
       task.serverInfo = (typeof data.content === 'string' ? data.content : data.message) || '处理失败'
@@ -155,8 +162,8 @@ export const useTaskStore = defineStore('task', () => {
     stopSSE()
   }
 
-  async function resumeTask(taskId) {
-    await taskAPI.resumeTask(taskId)
+  async function resumeTask(taskId, username) {
+    await taskAPI.resumeTask(taskId, username)
     const task = tasks.value[taskId]
     if (task) {
       task.status = 'queued'

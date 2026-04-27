@@ -162,8 +162,8 @@ class TextTaskProcessor(BaseTaskProcessor):
         self.task.polished_text = final_text
         db.session.commit()
 
-        # 推送最终结果
-        self.progress_publisher.publish_stream(final_text)
+        # 推送最终结果（完整替换，非增量追加）
+        self.progress_publisher.publish_full(final_text)
 
         # 清理Redis缓存
         self.redis_client.delete(progress_key)
