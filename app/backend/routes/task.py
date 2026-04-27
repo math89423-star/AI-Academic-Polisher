@@ -10,7 +10,7 @@ from backend.services.task_service import TaskService
 from backend.services.user_service import UserService
 from backend.utils.text_hash import check_duplicate_text
 from backend.config import RedisKeyManager
-from backend.extensions import redis_client, task_queue
+from backend.extensions import redis_client, task_queue, db
 from backend.utils.logging_config import get_logger
 import os
 import json
@@ -76,8 +76,9 @@ def create_task():
 
 
 @task_bp.route('/upload_docx', methods=['POST'])
-def upload_docx():
-    """上传文档任务"""
+@task_bp.route('/upload_document', methods=['POST'])
+def upload_document():
+    """上传文档任务（支持 doc/docx/pdf）"""
     if 'file' not in request.files:
         return jsonify({"error": "未找到文件"}), 400
 
@@ -85,6 +86,11 @@ def upload_docx():
     username = request.form.get('username')
     mode = request.form.get('mode', 'zh')
     strategy = request.form.get('strategy', 'standard')
+
+    filename = file.filename or ''
+    ext = os.path.splitext(filename)[1].lower()
+    if ext not in ('.doc', '.docx', '.pdf'):
+        return jsonify({"error": "仅支持 doc、docx、pdf 格式"}), 400
 
     # 验证用户
     try:
@@ -94,8 +100,11 @@ def upload_docx():
 
     # 创建文档任务
     try:
-        task = _task_service().create_docx_task(user, file, mode, strategy)
-        logger.info(f"用户 {username} 上传文档任务: {task.id}")
+        if ext == '.pdf':
+            task = _task_service().create_pdf_task(user, file, mode, strategy)
+        else:
+            task = _task_service().create_docx_task(user, file, mode, strategy)
+        logger.info(f"用户 {username} 上传文档任务: {task.id} ({ext})")
         return jsonify({"task_id": task.id, "title": task.title}), 201
 
     except Exception as e:
@@ -103,7 +112,7 @@ def upload_docx():
         return jsonify({"error": "上传失败"}), 500
 
 
-@task_bp.route('/stream/<int:task_id>', methods=['GET'])
+@task_bp.route('/<int:task_id>/stream', methods=['GET'])
 def stream_results(task_id):
     """SSE流式推送任务结果"""
     def generate():
@@ -135,6 +144,8 @@ def stream_results(task_id):
                 return
 
             last_message_time = time.time()
+            last_db_check = time.time()
+            db_check_interval = 3
             timeout = SSEConfig.TIMEOUT
             heartbeat_interval = SSEConfig.HEARTBEAT_INTERVAL
 
@@ -159,6 +170,21 @@ def stream_results(task_id):
                     if '"type": "done"' in raw_data or '"type": "fatal"' in raw_data:
                         break
                 else:
+                    if now - last_db_check >= db_check_interval:
+                        last_db_check = now
+                        db.session.expire_all()
+                        task = Task.query.get(task_id)
+                        if task and task.status == 'completed' and task.polished_text:
+                            done_payload = json.dumps({'type': 'stream', 'content': task.polished_text})
+                            yield f"data: {done_payload}\n\n"
+                            finish_payload = json.dumps({'type': 'done', 'content': '完成'})
+                            yield f"data: {finish_payload}\n\n"
+                            break
+                        elif task and task.status == 'failed':
+                            err_payload = json.dumps({'type': 'fatal', 'content': '任务处理失败'})
+                            yield f"data: {err_payload}\n\n"
+                            break
+
                     yield ": heartbeat\n\n"
 
         finally:
@@ -166,6 +192,25 @@ def stream_results(task_id):
             pubsub.close()
 
     return Response(generate(), mimetype='text/event-stream')
+
+
+@task_bp.route('/<int:task_id>/detail', methods=['GET'])
+def get_task_detail(task_id: int):
+    """获取单个任务详情"""
+    from backend.model.models import Task
+    task = Task.query.get(task_id)
+    if not task:
+        return jsonify({"error": "任务不存在"}), 404
+    return jsonify({
+        "id": task.id,
+        "title": task.title or "未命名任务",
+        "original_text": task.original_text,
+        "polished_text": task.polished_text or "",
+        "status": task.status,
+        "task_type": getattr(task, 'task_type', 'text'),
+        "download_url": f"/api/tasks/download/{task.id}" if getattr(task, 'task_type', 'text') in ('docx', 'pdf') and task.status == 'completed' else "",
+        "created_at": task.created_at.strftime("%Y-%m-%d %H:%M:%S") if task.created_at else ""
+    }), 200
 
 
 @task_bp.route('/history', methods=['GET'])
@@ -240,7 +285,7 @@ def download_docx(task_id):
     return send_file(
         absolute_file_path,
         as_attachment=True,
-        download_name=f"Polished_{task.title}.docx"
+        download_name=f"Polished_{os.path.splitext(task.title)[0]}.docx"
     )
 
 

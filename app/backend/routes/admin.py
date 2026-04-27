@@ -226,6 +226,37 @@ def batch_update_user_config():
         return jsonify({"error": str(e)}), 500
 
 
+@admin_bp.route('/api_configs/test_all', methods=['POST'])
+@require_admin
+def test_all_api_configs():
+    """一键测试全部API配置连接"""
+    try:
+        configs = _api_config_service().get_all_configs()
+        if not configs:
+            return jsonify({"results": [], "message": "没有可测试的API配置"}), 200
+
+        results: list[dict] = []
+        for cfg in configs:
+            try:
+                result = asyncio.run(_api_config_service().test_api_connection(
+                    api_key=cfg.get('api_key', ''),
+                    base_url=cfg.get('base_url', ''),
+                    model_name=cfg.get('model_name', ''),
+                    api_type=cfg.get('api_type', 'proxy')
+                ))
+                results.append({"id": cfg['id'], "name": cfg['name'], **result})
+            except Exception as e:
+                results.append({"id": cfg['id'], "name": cfg['name'], "success": False, "message": str(e)})
+
+        success_count = sum(1 for r in results if r['success'])
+        logger.info(f"批量API连接测试: {success_count}/{len(results)} 成功")
+        return jsonify({"results": results, "message": f"{success_count}/{len(results)} 个配置连接成功"}), 200
+
+    except Exception as e:
+        logger.error(f"批量API连接测试失败: {str(e)}")
+        return jsonify({"success": False, "message": f"测试异常: {str(e)}"}), 500
+
+
 @admin_bp.route('/api_configs/test', methods=['POST'])
 @require_admin
 def test_api_config():

@@ -81,8 +81,10 @@ export const useTaskStore = defineStore('task', () => {
     return data.task_id
   }
 
-  async function uploadDocx(username, file, mode, strategy) {
-    const data = await taskAPI.uploadDocx(username, file, mode, strategy)
+  async function uploadDocument(username, file, mode, strategy) {
+    const data = await taskAPI.uploadDocument(username, file, mode, strategy)
+    const ext = file.name.split('.').pop().toLowerCase()
+    const taskType = ext === 'pdf' ? 'pdf' : 'docx'
     const newTask = {
       id: data.task_id,
       time: new Date().toISOString(),
@@ -90,7 +92,7 @@ export const useTaskStore = defineStore('task', () => {
       polished: '',
       status: 'queued',
       serverInfo: '',
-      task_type: 'docx',
+      task_type: taskType,
       downloadUrl: '',
       title: file.name
     }
@@ -119,6 +121,7 @@ export const useTaskStore = defineStore('task', () => {
       task.downloadUrl = (typeof c === 'object' ? c.download_url : '') || ''
       task.serverInfo = ''
       sse.stop()
+      setTimeout(() => { window.location.reload() }, 500)
     } else if (data.type === 'error' || data.type === 'fatal') {
       task.status = 'failed'
       task.serverInfo = (typeof data.content === 'string' ? data.content : data.message) || '处理失败'
@@ -202,7 +205,7 @@ export const useTaskStore = defineStore('task', () => {
     switchTask,
     createNewTask,
     createTask,
-    uploadDocx,
+    uploadDocument,
     startSSE,
     stopSSE,
     cancelTask,

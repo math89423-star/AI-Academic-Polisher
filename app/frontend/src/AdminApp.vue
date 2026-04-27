@@ -137,10 +137,19 @@
 
       <div v-if="activeTab === 'api'" class="tab-content">
         <h2>API 配置列表</h2>
-        <button @click="showAddApi = true" class="btn-primary">添加 API 配置</button>
+        <div class="toolbar">
+          <button @click="showAddApi = true" class="btn-primary">添加 API 配置</button>
+          <button @click="testAllConfigs" class="btn-test-all" :disabled="testingAll">
+            {{ testingAll ? '测试中...' : '一键测试全部' }}
+          </button>
+        </div>
+        <div v-if="testAllResult" :class="['test-all-banner', testAllResult.allSuccess ? 'success' : 'warning']">
+          {{ testAllResult.message }}
+          <button class="banner-close" @click="testAllResult = null">&times;</button>
+        </div>
         <table class="data-table">
           <thead>
-            <tr><th>名称</th><th>API类型</th><th>Base URL</th><th>模型</th><th>操作</th></tr>
+            <tr><th>名称</th><th>API类型</th><th>Base URL</th><th>模型</th><th>连接状态</th><th>操作</th></tr>
           </thead>
           <tbody>
             <tr v-for="config in apiConfigs" :key="config.id">
@@ -152,6 +161,14 @@
               </td>
               <td>{{ config.base_url }}</td>
               <td>{{ config.model_name }}</td>
+              <td>
+                <span v-if="testAllResults[config.id]" class="conn-status" :class="testAllResults[config.id].success ? 'conn-ok' : 'conn-fail'">
+                  {{ testAllResults[config.id].success ? '连接正常' : '连接失败' }}
+                  <span v-if="!testAllResults[config.id].success" class="conn-tip" :title="testAllResults[config.id].message">?</span>
+                </span>
+                <span v-else-if="testingAll" class="conn-status conn-pending">测试中...</span>
+                <span v-else class="conn-status conn-none">未测试</span>
+              </td>
               <td class="action-btns">
                 <button @click="openEditApi(config)" class="btn-edit">编辑</button>
                 <button @click="testExistingConfig(config)" class="btn-test-sm" :disabled="testingExistingId === config.id">
@@ -338,6 +355,9 @@ const batchConfigId = ref(null)
 const editingApi = ref(null)
 const editTestResult = ref(null)
 const testingExistingId = ref(null)
+const testingAll = ref(false)
+const testAllResult = ref(null)
+const testAllResults = ref({})
 
 const isAllSelected = computed(() => {
   return users.value.length > 0 && selectedUsers.value.length === users.value.length
@@ -563,6 +583,33 @@ const testExistingConfig = async (config) => {
   }
 }
 
+const testAllConfigs = async () => {
+  testingAll.value = true
+  testAllResult.value = null
+  testAllResults.value = {}
+
+  try {
+    const username = getAdminUsername()
+    const res = await fetch('/api/admin/api_configs/test_all', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ admin_username: username })
+    })
+    const data = await res.json()
+    if (data.results) {
+      for (const r of data.results) {
+        testAllResults.value[r.id] = { success: r.success, message: r.message }
+      }
+    }
+    const allSuccess = data.results?.every(r => r.success) ?? false
+    testAllResult.value = { message: data.message, allSuccess }
+  } catch (e) {
+    testAllResult.value = { message: '测试请求失败: ' + e.message, allSuccess: false }
+  } finally {
+    testingAll.value = false
+  }
+}
+
 const deleteUser = async (username) => {
   if (!confirm(`确认删除 ${username}?`)) return
   const adminUsername = getAdminUsername()
@@ -725,6 +772,19 @@ onMounted(() => { checkLoginStatus() })
 .btn-edit:hover { background: #2980b9; }
 .btn-test-sm { background: #ff9800; color: white; border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; transition: all 0.2s; }
 .btn-test-sm:disabled { background: #ccc; cursor: not-allowed; }
+.btn-test-all { background: linear-gradient(135deg, #ff9800, #f57c00); color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; margin-bottom: 16px; transition: all 0.2s; font-weight: 500; }
+.btn-test-all:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(255,152,0,0.3); }
+.btn-test-all:disabled { background: #ccc; cursor: not-allowed; transform: none; box-shadow: none; }
+.test-all-banner { padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; font-size: 14px; display: flex; align-items: center; justify-content: space-between; }
+.test-all-banner.success { background: #e8f5e9; color: #2e7d32; border: 1px solid #4caf50; }
+.test-all-banner.warning { background: #fff3e0; color: #e65100; border: 1px solid #ff9800; }
+.banner-close { background: none; border: none; font-size: 18px; cursor: pointer; color: inherit; padding: 0 4px; }
+.conn-status { font-size: 12px; font-weight: 500; padding: 3px 10px; border-radius: 10px; white-space: nowrap; }
+.conn-ok { background: #e8f5e9; color: #2e7d32; }
+.conn-fail { background: #ffebee; color: #c62828; }
+.conn-pending { background: #fff3e0; color: #e65100; }
+.conn-none { background: #f1f5f9; color: #94a3b8; }
+.conn-tip { display: inline-block; margin-left: 4px; width: 16px; height: 16px; line-height: 16px; text-align: center; border-radius: 50%; background: #c62828; color: white; font-size: 11px; cursor: help; }
 .action-btns { display: flex; gap: 6px; }
 .test-result { padding: 12px; border-radius: 6px; margin-bottom: 15px; font-size: 14px; }
 .test-result.success { background: #e8f5e9; color: #2e7d32; border: 1px solid #4caf50; }

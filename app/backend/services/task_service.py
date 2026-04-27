@@ -13,6 +13,7 @@ from backend.model.models import Task, User
 from backend.utils.helpers import extract_title
 from backend.utils.text_hash import store_text_hash
 import os
+import subprocess
 from werkzeug.utils import secure_filename
 
 
@@ -74,22 +75,18 @@ class TaskService:
 
     def create_docx_task(self, user: User, file: Any, mode: str, strategy: str) -> Task:
         """
-        创建文档任务
+        创建文档任务（支持 .docx 和 .doc）
 
-        Args:
-            user: 用户对象
-            file: 上传的文件对象
-            mode: 语言模式 (zh/en)
-            strategy: 策略 (standard/strict)
-
-        Returns:
-            Task: 创建的任务对象
+        .doc 文件会先通过 LibreOffice 转换为 .docx
         """
         filename = secure_filename(file.filename)
+        ext = os.path.splitext(filename)[1].lower()
         save_path = os.path.join('uploads', f"{user.id}_{filename}")
-
-        # 保存文件
         file.save(save_path)
+
+        if ext == '.doc':
+            save_path = self._convert_doc_to_docx(save_path)
+            filename = os.path.splitext(filename)[0] + '.docx'
 
         try:
             task = Task(
@@ -105,18 +102,63 @@ class TaskService:
 
             self.db.session.add(task)
             self.db.session.commit()
-
-            # 异步入队
             self.queue.enqueue('backend.worker_engine.process_task', task.id)
-
             return task
 
         except Exception as e:
             self.db.session.rollback()
-            # 删除已上传的文件
             if os.path.exists(save_path):
                 os.remove(save_path)
             raise
+
+    def create_pdf_task(self, user: User, file: Any, mode: str, strategy: str) -> Task:
+        """创建PDF文档任务"""
+        filename = secure_filename(file.filename)
+        save_path = os.path.join('uploads', f"{user.id}_{filename}")
+        file.save(save_path)
+
+        try:
+            task = Task(
+                user_id=user.id,
+                title=filename[:20],
+                original_text=f"[PDF任务] {filename}",
+                mode=mode,
+                strategy=strategy,
+                status='queued',
+                task_type='pdf',
+                file_path=save_path
+            )
+
+            self.db.session.add(task)
+            self.db.session.commit()
+            self.queue.enqueue('backend.worker_engine.process_task', task.id)
+            return task
+
+        except Exception as e:
+            self.db.session.rollback()
+            if os.path.exists(save_path):
+                os.remove(save_path)
+            raise
+
+    def _convert_doc_to_docx(self, doc_path: str) -> str:
+        """将 .doc 文件转换为 .docx（需要系统安装 LibreOffice）"""
+        output_dir = os.path.dirname(doc_path)
+        try:
+            subprocess.run(
+                ['libreoffice', '--headless', '--convert-to', 'docx', doc_path, '--outdir', output_dir],
+                timeout=60, check=True, capture_output=True
+            )
+        except FileNotFoundError:
+            raise ValueError("服务器未安装 LibreOffice，无法处理 .doc 文件，请转换为 .docx 后重新上传")
+        except subprocess.TimeoutExpired:
+            raise ValueError(".doc 文件转换超时，请转换为 .docx 后重新上传")
+
+        docx_path = os.path.splitext(doc_path)[0] + '.docx'
+        if not os.path.exists(docx_path):
+            raise ValueError(".doc 文件转换失败，请转换为 .docx 后重新上传")
+
+        os.remove(doc_path)
+        return docx_path
 
     def cancel_task(self, task_id: int, user_id: int) -> dict:
         """
@@ -207,7 +249,7 @@ class TaskService:
                 "polished_text": t.polished_text or "",
                 "status": t.status,
                 "task_type": getattr(t, 'task_type', 'text'),
-                "download_url": f"/api/tasks/download/{t.id}" if getattr(t, 'task_type', 'text') == 'docx' and t.status == 'completed' else "",
+                "download_url": f"/api/tasks/download/{t.id}" if getattr(t, 'task_type', 'text') in ('docx', 'pdf') and t.status == 'completed' else "",
                 "created_at": t.created_at.strftime("%Y-%m-%d %H:%M:%S") if t.created_at else ""
             })
 

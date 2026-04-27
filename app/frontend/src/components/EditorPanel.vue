@@ -13,18 +13,18 @@
     </div>
 
     <div class="content-area">
-      <div v-if="isDocxTask" id="docx-info-box">
-        <div style="font-size: 56px; margin-bottom: 10px;">📄</div>
-        <div>{{ currentTask?.title || '文档名称.docx' }}</div>
+      <div v-if="isFileTask" id="docx-info-box">
+        <div style="font-size: 56px; margin-bottom: 10px;">{{ currentTask?.task_type === 'pdf' ? '📕' : '📄' }}</div>
+        <div>{{ currentTask?.title || '文档名称' }}</div>
         <div style="font-size: 13px; color: #10b981; background: #d1fae5; padding: 5px 15px; border-radius: 12px; font-weight: 500;">
-          Word 专用解析引擎已激活
+          {{ currentTask?.task_type === 'pdf' ? 'PDF 智能解析引擎已激活' : 'Word 专用解析引擎已激活' }}
         </div>
       </div>
 
       <textarea
         v-else
         v-model="originalText"
-        placeholder="请在此粘贴需要润色的长篇文本..."
+        placeholder="请在此粘贴需要润色的长篇文本，或上传 Word/PDF 文档..."
       ></textarea>
       <div class="char-count">字数: {{ originalText.length }}</div>
     </div>
@@ -66,7 +66,7 @@
         <input
           ref="fileInput"
           type="file"
-          accept=".docx"
+          accept=".doc,.docx,.pdf"
           style="display: none;"
           @change="handleFileChange"
         >
@@ -76,7 +76,7 @@
           style="background-color: #f59e0b;"
           @click="$refs.fileInput.click()"
         >
-          📄 上传 Word
+          📄 上传文档
         </button>
 
         <button
@@ -124,8 +124,8 @@ const selectedStrategy = ref('standard')
 const isProcessing = ref(false)
 const errorToast = ref(null)
 
-const isDocxTask = computed(() => {
-  return props.currentTask?.task_type === 'docx'
+const isFileTask = computed(() => {
+  return props.currentTask && ['docx', 'pdf'].includes(props.currentTask.task_type)
 })
 
 const showCancel = computed(() => {
@@ -200,7 +200,7 @@ const handleFileChange = async (event) => {
 
   try {
     isProcessing.value = true
-    const taskId = await taskStore.uploadDocx(
+    const taskId = await taskStore.uploadDocument(
       props.username,
       file,
       mode.value,
@@ -209,9 +209,9 @@ const handleFileChange = async (event) => {
     emit('task-created', taskId)
   } catch (err) {
     errorToast.value = {
-      type: 'Word上传失败',
+      type: '文档上传失败',
       message: err.message,
-      suggestion: '请确保文件格式正确且大小不超过限制'
+      suggestion: '请确保文件格式正确（支持 doc/docx/pdf）且大小不超过限制'
     }
   } finally {
     isProcessing.value = false

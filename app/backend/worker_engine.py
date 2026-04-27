@@ -12,6 +12,7 @@ from backend import create_app
 from backend.model.models import Task
 from backend.processors.text_processor import TextTaskProcessor
 from backend.processors.docx_processor import DocxTaskProcessor
+from backend.processors.pdf_processor import PdfTaskProcessor
 from backend.processors.base_processor import BaseTaskProcessor
 from backend.utils.logging_config import get_logger
 
@@ -76,5 +77,7 @@ def _get_processor(task: object) -> Optional[BaseTaskProcessor]:
         return TextTaskProcessor(task, redis_client)
     elif task_type == 'docx':
         return DocxTaskProcessor(task, redis_client)
+    elif task_type == 'pdf':
+        return PdfTaskProcessor(task, redis_client)
     else:
         return None

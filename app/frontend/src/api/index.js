@@ -53,14 +53,14 @@ export const taskAPI = {
     return res.json()
   },
 
-  async uploadDocx(username, file, mode, strategy) {
+  async uploadDocument(username, file, mode, strategy) {
     const formData = new FormData()
     formData.append('file', file)
     formData.append('username', username)
     formData.append('mode', mode)
     formData.append('strategy', strategy)
 
-    const res = await fetch(`${API_BASE}/tasks/upload_docx`, {
+    const res = await fetch(`${API_BASE}/tasks/upload_document`, {
       method: 'POST',
       body: formData
     })
