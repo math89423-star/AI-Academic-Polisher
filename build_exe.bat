@@ -3,7 +3,7 @@ chcp 65001 >nul 2>&1
 title AI Academic Polisher - Build EXE
 
 echo ========================================
-echo   AIpolish Windows EXE Builder
+echo   AI Academic Polisher - Windows EXE Builder
 echo ========================================
 echo.
 
@@ -64,7 +64,7 @@ if exist ".env.desktop.example" (
     copy /Y .env.desktop.example dist\AcademicPolisher\.env >nul
     echo [OK] Copied .env.desktop.example to dist\AcademicPolisher\.env
 ) else (
-    echo [INFO] No .env.desktop.example found. Create .env manually next to AIpolish.exe
+    echo [INFO] No .env.desktop.example found. Create .env manually next to AcademicPolisher.exe
 )
 
 echo.

@@ -2,40 +2,73 @@
 
 专为学术论文打磨而生的 AI 润色系统。支持纯文本流式输出和 Word/PDF 文档一键并发润色，内置多套防查重策略，提示词热插拔配置。
 
-系统支持两种部署模式：
-- **Server 模式** — Linux 服务器 Docker 一键部署，MySQL + Redis + Nginx 全栈
-- **Desktop 模式** — Windows 打包为 EXE，SQLite + 内存队列，开箱即用
+---
 
-> 架构详情请参阅 [ARCHITECTURE.md](ARCHITECTURE.md)
+## 一、项目介绍
+
+### 核心特性
+
+- **双模式部署** — 一套代码自动切换：服务器 (Docker) 与桌面 (EXE)
+- **高并发引擎** — RQ 任务队列 + ThreadPoolExecutor 并发切片处理
+- **Word/PDF 无损润色** — 段落级并发处理，保留原始排版格式
+- **SSE 流式输出** — 实时推送润色结果，打字机效果
+- **防查重策略** — 标准/极致等多套提示词，Markdown 格式热插拔
+- **管理后台** — 用户管理、API 线路管理、主题配置、系统设置
+
+### 双模式说明
+
+| 模式 | 适用场景 | 基础设施 |
+|------|---------|---------|
+| **Server** | Linux 服务器多人使用 | Docker Compose (MySQL + Redis + Nginx)，经测试支持数十人团队协作 |
+| **Desktop** | Windows 本地单人使用 | 单 EXE (SQLite + 内存队列)，开箱即用 |
 
 ---
 
-## 核心特性
+## 二、数据实证
 
-- 双模式部署：服务器 (Docker) 与桌面 (EXE) 一套代码自动切换
-- 高并发引擎：RQ 任务队列 + ThreadPoolExecutor 并发切片
-- Word/PDF 无损润色：段落级并发处理，保留原始排版
-- SSE 流式输出：实时推送，打字机效果
-- 防查重策略：标准/极致等多套提示词，热插拔配置
-- 管理后台：用户管理、API 线路管理、主题配置
+> 以下为 **2026 年 4 月最新测试结果**，润色模型为 `gemini-3.1-pro-preview`，润色后分别提交至主流查重/AI 检测平台验证。
+
+### PaperPass 查重检测
+
+AIGC 率从 **75.24%** 降至 **0.41%**
+
+![PaperPass 数据报告](docs/PaperPass数据报告.png)
+
+### 维普查重检测
+
+AIGC 率从 **42.79%** 降至 **3.34%**
+
+![维普数据报告](docs/维普数据报告.png)
+
+### 朱雀 AI 检测（报告一）
+
+英文 AIGC 率从 **100%** 降至 **0%**
+
+![朱雀 AI 检查数据报告 1](docs/朱雀AI检查数据报告1.png)
+
+### 朱雀 AI 检测（报告二）
+
+中文 AIGC 率从 **100%** 降至 **0%**
+
+![朱雀 AI 检查数据报告 2](docs/朱雀AI检查数据报告2.png)
 
 ---
 
-## Server 模式部署 (Linux)
+## 三、安装部署
 
-### 前置要求
+### Server 模式 (Linux)
 
-在开始之前，请确保服务器已安装 Docker 和 Docker Compose：
+#### 前置要求
 
 ```bash
-# Ubuntu / Debian
+# Ubuntu / Debian 安装 Docker
 curl -fsSL https://get.docker.com | sh
 sudo systemctl enable docker && sudo systemctl start docker
 ```
 
 > 其他发行版请参考 [Docker 官方文档](https://docs.docker.com/engine/install/)
 
-### 部署步骤
+#### 部署步骤
 
 ```bash
 # 1. 克隆仓库
@@ -70,7 +103,7 @@ bash start.sh up
 
 启动后访问 `http://服务器IP`，管理后台 `http://服务器IP/admin`。
 
-### 常用命令
+#### 常用命令
 
 | 命令 | 说明 |
 |------|------|
@@ -82,37 +115,34 @@ bash start.sh up
 | `bash start.sh build` | 重新构建镜像 |
 | `bash start.sh clean` | 清理所有容器和数据 |
 
----
-
-## Desktop 模式部署 (Windows)
+### Desktop 模式 (Windows)
 
 Desktop 模式无需 MySQL、Redis，打包为单个 EXE 目录分发。
 
-### 前置要求
+#### 前置要求
 
 | 依赖 | 版本 | 说明 |
 |------|------|------|
 | Python | >= 3.10 | 打包环境 |
 | Node.js | >= 18 | 前端构建 |
 
-### 打包步骤
+#### 打包步骤
 
 ```bash
 # 1. 克隆仓库
-git clone -b dev https://github.com/math89423-star/AI-Academic-Polisher.git
+git clone https://github.com/math89423-star/AI-Academic-Polisher.git
 cd AI-Academic-Polisher
 
 # 2. 安装 Python 依赖
 pip install -r app/requirements.txt
 
 # 3. 一键打包（自动构建前端 + 生成 EXE）
-# Windows 下双击 build_exe.bat，或在命令行运行：
 build_exe.bat
 ```
 
 打包完成后 `dist\AcademicPolisher\` 目录即为可分发产物。
 
-### 使用方式
+#### 使用方式
 
 1. 将 `.env.desktop.example` 复制到 `dist\AcademicPolisher\.env`
 2. 编辑 `.env`，填入你的 AI API Key 和其他配置
@@ -125,18 +155,18 @@ build_exe.bat
 
 ---
 
-## 技术栈
+## 四、架构与技术栈
+
+### 技术栈
 
 | 层 | Server 模式 | Desktop 模式 |
 |----|------------|-------------|
 | 后端 | Flask + SQLAlchemy + RQ + Redis Pub/Sub | Flask + SQLAlchemy (SQLite) + 内存队列/Pub/Sub |
 | 前端 | Vue 3 + Pinia + Vite | 同左（打包进 EXE） |
 | AI | OpenAI 兼容 API（官方 / 代理 / Ollama） | 同左 |
-| 部署 | Docker Compose | PyInstaller EXE |
+| 部署 | Docker Compose (Nginx + Gunicorn) | PyInstaller EXE |
 
----
-
-## 项目结构
+### 项目结构
 
 ```
 app/
@@ -151,13 +181,7 @@ app/
 │   ├── memory_queue.py         # MemoryQueue (Desktop 模式)
 │   ├── worker_engine.py        # 任务分发
 │   ├── prompts_config.py       # 提示词加载 & 策略配置
-│   ├── prompts/                # 提示词文件 (Markdown 格式，热插拔)
-│   │   ├── cn_standard.md      # 中文标准润色
-│   │   ├── cn_strict.md        # 中文极致降重
-│   │   ├── en_standard.md      # 英文标准润色
-│   │   ├── en_strict.md        # 英文极致降重
-│   │   ├── extractor.md        # 结果提取提示词
-│   │   └── continuation.md     # 续写提示词
+│   ├── prompts/                # 提示词文件 (Markdown, 热插拔)
 │   ├── model/                  # SQLAlchemy 模型
 │   ├── routes/                 # API 路由 (auth/task/admin)
 │   ├── services/               # 业务逻辑层
@@ -174,3 +198,11 @@ app/
 ### 自定义提示词
 
 提示词以 Markdown 文件存放在 `app/backend/prompts/` 目录下，修改后无需重启即可生效。策略在 `prompts_config.py` 中注册，每个策略指定中英文各一个提示词文件。
+
+> 完整架构图、双模式实现细节、数据流图、代码依赖分析等请查看 **[ARCHITECTURE.md](ARCHITECTURE.md)**
+
+---
+
+## License
+
+本项目基于 [MIT License](LICENSE) 开源。

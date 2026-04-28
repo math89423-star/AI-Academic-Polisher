@@ -7,7 +7,7 @@ current_dir = os.path.abspath(os.path.dirname(__file__))
 sys.path.insert(0, current_dir)
 
 # 强行剔除可能存在的旧路径
-# sys.path = [p for p in sys.path if p != '/home/aipolish']
+# sys.path = [p for p in sys.path if p != '/home/academic-polisher']
 
 import backend.worker_engine as w
 

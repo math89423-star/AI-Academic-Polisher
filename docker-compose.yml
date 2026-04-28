@@ -4,7 +4,7 @@ services:
   # Nginx 网关
   nginx:
     image: nginx:alpine
-    container_name: aipolish_nginx
+    container_name: academic-polisher_nginx
     restart: always
     ports:
       - "80:80"
@@ -15,24 +15,24 @@ services:
       - backend
       - frontend
     networks:
-      - aipolish-network
+      - academic-polisher-network
 
   # 前端应用
   frontend:
     build:
       context: ./app
       dockerfile: Dockerfile.frontend
-    container_name: aipolish_frontend
+    container_name: academic-polisher_frontend
     restart: always
     networks:
-      - aipolish-network
+      - academic-polisher-network
 
   # 后端应用
   backend:
     build:
       context: ./app
       dockerfile: Dockerfile.backend
-    container_name: aipolish_backend
+    container_name: academic-polisher_backend
     restart: always
     ports:
       - "5000:5000"
@@ -48,12 +48,12 @@ services:
       redis:
         condition: service_started
     networks:
-      - aipolish-network
+      - academic-polisher-network
 
   # MySQL 数据库
   mysql:
     image: m.daocloud.io/docker.io/library/mysql:8.0
-    container_name: aipolish_mysql
+    container_name: academic-polisher_mysql
     restart: always
     ports:
       - "3306:3306"
@@ -73,12 +73,12 @@ services:
     volumes:
       - ./mysql_data:/var/lib/mysql
     networks:
-      - aipolish-network
+      - academic-polisher-network
 
   # Redis 缓存
   redis:
     image: redis:7.0-alpine
-    container_name: aipolish_redis
+    container_name: academic-polisher_redis
     restart: always
     ports:
       - "6379:6379"
@@ -87,11 +87,11 @@ services:
       - ./app/config/redis.conf:/usr/local/etc/redis/redis.conf
     command: redis-server /usr/local/etc/redis/redis.conf
     networks:
-      - aipolish-network
+      - academic-polisher-network
 
 # 网络配置
 networks:
-  aipolish-network:
+  academic-polisher-network:
     driver: bridge
 
 # 数据卷

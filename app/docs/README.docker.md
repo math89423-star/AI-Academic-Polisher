@@ -30,11 +30,11 @@
 
 | 容器名称 | 服务 | 端口 | 说明 |
 |---------|------|------|------|
-| aipolish_nginx | Nginx | 80, 8080 | 反向代理和静态文件服务 |
-| aipolish_frontend | Frontend | 内部 | Vue 3 前端应用 |
-| aipolish_backend | Backend | 5000 | Flask API + RQ Workers |
-| aipolish_mysql | MySQL | 3306 | 数据库 |
-| aipolish_redis | Redis | 6379 | 任务队列和缓存 |
+| academic-polisher_nginx | Nginx | 80, 8080 | 反向代理和静态文件服务 |
+| academic-polisher_frontend | Frontend | 内部 | Vue 3 前端应用 |
+| academic-polisher_backend | Backend | 5000 | Flask API + RQ Workers |
+| academic-polisher_mysql | MySQL | 3306 | 数据库 |
+| academic-polisher_redis | Redis | 6379 | 任务队列和缓存 |
 
 ## 快速启动
 
@@ -87,8 +87,8 @@ docker-compose logs -f backend
 docker-compose logs -f frontend
 
 # 进入容器
-docker exec -it aipolish_backend bash
-docker exec -it aipolish_frontend sh
+docker exec -it academic-polisher_backend bash
+docker exec -it academic-polisher_frontend sh
 
 # 重新构建单个容器
 docker-compose build --no-cache backend
@@ -120,7 +120,7 @@ docker-compose up -d backend
 # 数据库配置
 DB_HOST=mysql
 DB_PORT=3306
-DB_NAME=aipolish
+DB_NAME=academic-polisher
 DB_USER=root
 DB_PASSWORD=your_password
 
@@ -163,8 +163,8 @@ docker-compose ps
 ### 2. 前端无法访问后端
 
 检查 nginx 配置中的 upstream 是否正确：
-- `aipolish_backend:5000` (后端)
-- `aipolish_frontend:80` (前端)
+- `academic-polisher_backend:5000` (后端)
+- `academic-polisher_frontend:80` (前端)
 
 ### 3. 数据库连接失败
 

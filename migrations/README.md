@@ -6,12 +6,12 @@
 
 #### 方法1：通过 MySQL 容器执行
 ```bash
-docker exec -i aipolish_mysql mysql -uroot -p123456 ai_polisher < migrations/add_api_type_to_api_configs.sql
+docker exec -i academic-polisher_mysql mysql -uroot -p123456 ai_polisher < migrations/add_api_type_to_api_configs.sql
 ```
 
 #### 方法2：进入容器手动执行
 ```bash
-docker exec -it aipolish_mysql mysql -uroot -p123456 ai_polisher
+docker exec -it academic-polisher_mysql mysql -uroot -p123456 ai_polisher
 ```
 然后复制粘贴 SQL 内容执行。
 

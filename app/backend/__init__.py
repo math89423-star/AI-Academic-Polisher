@@ -65,7 +65,7 @@ def create_app(config_class: Type[Any] = Config) -> Flask:
     # 健康检查接口
     @app.route('/api/health')
     def health_check():
-        return {"status": "ok", "message": "AI Polisher API is running!"}
+        return {"status": "ok", "message": "AI Academic Polisher API is running!"}
 
     # 上传文件静态服务
     upload_dir = get_upload_dir()

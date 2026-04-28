@@ -191,7 +191,7 @@ MemoryRedis (memory_backend.py)
   ├─ KV: get/set/delete/exists/expire/keys
   ├─ Hash: hset/hget/hgetall/hdel
   ├─ Set: sadd/srem/smembers/sismember
-  └─ PubSub: publish/subscribe (threading.Condition 通知)
+  └─ PubSub: publish/subscribe (queue.Queue + threading.Lock)
 
 MemoryQueue (memory_queue.py)
   ├─ 内置 queue.Queue + daemon worker thread
@@ -206,7 +206,7 @@ MemoryQueue (memory_queue.py)
 app/main.py
   │
   ├─ create_app()
-  │   ├─ SQLAlchemy bind = sqlite:///aipolish.db
+  │   ├─ SQLAlchemy bind = sqlite:///ai_polisher.db
   │   ├─ db.create_all()  (自动建表)
   │   └─ 自动创建 admin 用户
   │
@@ -712,7 +712,7 @@ User.query.filter_by(username=username).first()
 │  └────────┬────────┘  └──────────────┘  └───────┬───────┘  │
 │           │                                      │          │
 │           └──────────── SQLite ──────────────────┘          │
-│                      (aipolish.db)                           │
+│                      (ai_polisher.db)                        │
 └─────────────────────────────────────────────────────────────┘
   无需安装 Redis / MySQL / Nginx，双击即用
 ```
