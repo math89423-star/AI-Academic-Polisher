@@ -1,33 +1,50 @@
 import os
+import sys
 from dotenv import load_dotenv
 
 # 加载 .env 环境变量
 load_dotenv()
 
+
+def _resolve_deploy_mode() -> str:
+    """解析部署模式：server / desktop / auto（自动检测平台）"""
+    mode = os.environ.get('DEPLOY_MODE', 'auto').lower()
+    if mode == 'auto':
+        return 'desktop' if sys.platform == 'win32' else 'server'
+    return mode
+
+
 class Config:
+    # --- 部署模式 ---
+    DEPLOY_MODE = _resolve_deploy_mode()
+
     # --- 服务运行配置 ---
-    APP_HOST = os.environ.get('APP_HOST', '0.0.0.0')
+    APP_HOST = os.environ.get('APP_HOST', '127.0.0.1' if DEPLOY_MODE == 'desktop' else '0.0.0.0')
     APP_PORT = int(os.environ.get('APP_PORT', 5000))
 
     # --- 数据库配置 ---
-    DB_USER = os.environ.get('DB_USER', 'root')
-    DB_PASSWORD = os.environ.get('DB_PASSWORD', '123456')
-    DB_HOST = os.environ.get('DB_HOST', '127.0.0.1')
-    DB_PORT = os.environ.get('DB_PORT', '3306')
-    DB_NAME = os.environ.get('DB_NAME', 'ai_polisher')
-    
-    SQLALCHEMY_DATABASE_URI = f"mysql+mysqlconnector://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}?charset=utf8mb4"
+    if DEPLOY_MODE == 'desktop':
+        _db_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'data')
+        os.makedirs(_db_dir, exist_ok=True)
+        SQLALCHEMY_DATABASE_URI = f"sqlite:///{os.path.join(_db_dir, 'ai_polisher.db')}"
+        SQLALCHEMY_ENGINE_OPTIONS = {}
+    else:
+        DB_USER = os.environ.get('DB_USER', 'root')
+        DB_PASSWORD = os.environ.get('DB_PASSWORD', '123456')
+        DB_HOST = os.environ.get('DB_HOST', '127.0.0.1')
+        DB_PORT = os.environ.get('DB_PORT', '3306')
+        DB_NAME = os.environ.get('DB_NAME', 'ai_polisher')
+        SQLALCHEMY_DATABASE_URI = f"mysql+mysqlconnector://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}?charset=utf8mb4"
+        SQLALCHEMY_ENGINE_OPTIONS = {
+            "pool_size": 16,
+            "max_overflow": 24,
+            "pool_recycle": 1800,
+            "pool_pre_ping": True,
+            "pool_timeout": 30,
+            "connect_args": {"charset": "utf8mb4", "collation": "utf8mb4_unicode_ci"}
+        }
+
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    
-    # 高并发数据库连接池配置（优化：避免连接池过大）
-    SQLALCHEMY_ENGINE_OPTIONS = {
-        "pool_size": 16,           # 降低基础连接池（4 gunicorn workers + 余量）
-        "max_overflow": 24,        # 降低溢出连接数
-        "pool_recycle": 1800,
-        "pool_pre_ping": True,
-        "pool_timeout": 30,
-        "connect_args": {"charset": "utf8mb4", "collation": "utf8mb4_unicode_ci"}
-    }
     # --- AI 全局默认配置 ---
     OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', 'your-api-key')
     OPENAI_BASE_URL = os.environ.get('OPENAI_BASE_URL', 'https://api.openai.com/v1')
@@ -48,6 +65,18 @@ class WorkerConfig:
     TEXT_CHUNK_SIZE = int(os.environ.get('TEXT_CHUNK_SIZE', 1500))
     RETRY_TIMES = int(os.environ.get('RETRY_TIMES', 3))
     RETRY_DELAY_BASE = int(os.environ.get('RETRY_DELAY_BASE', 2))  # 指数退避基数
+
+    @staticmethod
+    def get_chunk_size() -> int:
+        """从数据库读取分块大小，失败时回退到环境变量默认值"""
+        try:
+            from backend.model.models import SystemSetting
+            setting = SystemSetting.query.filter_by(key='chunk_size').first()
+            if setting and setting.value:
+                return int(setting.value)
+        except Exception:
+            pass
+        return WorkerConfig.TEXT_CHUNK_SIZE
 
 
 class SSEConfig:

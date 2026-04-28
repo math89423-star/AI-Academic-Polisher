@@ -30,6 +30,17 @@ def create_app(config_class: Type[Any] = Config) -> Flask:
     # 绑定扩展到 app
     db.init_app(app)
 
+    # Desktop 模式：自动创建 SQLite 表结构和管理员账号
+    if Config.DEPLOY_MODE == 'desktop':
+        with app.app_context():
+            db.create_all()
+            from backend.model.models import User
+            if not User.query.filter_by(role='admin').first():
+                admin = User(username=Config.ADMIN_USERNAME, role='admin', is_active=True)
+                admin.set_password(Config.ADMIN_PASSWORD)
+                db.session.add(admin)
+                db.session.commit()
+
     # 在上下文中注册路由蓝图，避免循环导入
     with app.app_context():
         # 按需导入蓝图和模型

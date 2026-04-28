@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import Optional
 
 from backend.extensions import db, redis_client
-from backend import create_app
+from backend.config import Config
 from backend.model.models import Task
 from backend.processors.text_processor import TextTaskProcessor
 from backend.processors.docx_processor import DocxTaskProcessor
@@ -18,7 +18,19 @@ from backend.utils.logging_config import get_logger
 
 logger = get_logger(__name__)
 
-app = create_app()
+# server 模式：RQ Worker 在独立进程中运行，需要自己的 app 实例
+# desktop 模式：MemoryQueue 在主进程线程中运行，由 start_worker(app) 传入 app
+if Config.DEPLOY_MODE != 'desktop':
+    from backend import create_app
+    app = create_app()
+else:
+    app = None
+
+
+def set_app(flask_app: object) -> None:
+    """desktop 模式下由 MemoryQueue 注入主进程的 app"""
+    global app
+    app = flask_app
 
 
 def process_task(task_id: int) -> None:

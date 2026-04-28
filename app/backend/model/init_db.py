@@ -1,8 +1,7 @@
 # backend/model/init_db.py
 import sys
 import os
-import time  # 🟢 引入时间库用于延迟等待
-import mysql.connector
+import time
 
 # 将项目根目录加入系统路径
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -14,14 +13,18 @@ from backend.config import Config
 
 def create_database_if_not_exists() -> None:
     """在初始化 SQLAlchemy 前，先通过原生驱动强制创建数据库 (带智能重试与防乱码机制)"""
+    if Config.DEPLOY_MODE == 'desktop':
+        print("📦 Desktop 模式：SQLite 自动创建数据库文件，跳过此步骤")
+        return
+
+    import mysql.connector
     print(f"⏳ 正在检查并创建数据库: {Config.DB_NAME}...")
 
-    max_retries = 20     # 总共尝试 20 次
-    retry_interval = 3   # 每次失败后等待 3 秒，总共最多等待 60 秒
-    
+    max_retries = 20
+    retry_interval = 3
+
     for attempt in range(1, max_retries + 1):
         try:
-            # 🟢 包含防乱码配置与连接重试
             conn = mysql.connector.connect(
                 host=Config.DB_HOST,
                 user=Config.DB_USER,
@@ -36,7 +39,7 @@ def create_database_if_not_exists() -> None:
             cursor.close()
             conn.close()
             print(f"✅ 数据库 {Config.DB_NAME} 准备就绪！")
-            return  # 连接成功，直接退出重试循环
+            return
 
         except Exception as e:
             if attempt < max_retries:
@@ -66,15 +69,16 @@ def init_database() -> None:
         print("⏳ 正在创建/更新表结构...")
         try:
             db.create_all()
-            # 增量迁移：为已有表添加新列
-            from sqlalchemy import inspect, text
-            inspector = inspect(db.engine)
-            if 'users' in inspector.get_table_names():
-                columns = [c['name'] for c in inspector.get_columns('users')]
-                if 'can_use_strict' not in columns:
-                    db.session.execute(text('ALTER TABLE users ADD COLUMN can_use_strict BOOLEAN DEFAULT FALSE'))
-                    db.session.commit()
-                    print("  ✅ 已添加 can_use_strict 列")
+            # 增量迁移：为已有表添加新列（仅 MySQL 需要，SQLite 由 create_all 一次性建好）
+            if Config.DEPLOY_MODE != 'desktop':
+                from sqlalchemy import inspect, text
+                inspector = inspect(db.engine)
+                if 'users' in inspector.get_table_names():
+                    columns = [c['name'] for c in inspector.get_columns('users')]
+                    if 'can_use_strict' not in columns:
+                        db.session.execute(text('ALTER TABLE users ADD COLUMN can_use_strict BOOLEAN DEFAULT FALSE'))
+                        db.session.commit()
+                        print("  ✅ 已添加 can_use_strict 列")
             print("✅ 表结构创建完成")
         except Exception as e:
             print(f"❌ 表结构创建失败: {str(e)}")

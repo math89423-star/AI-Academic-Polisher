@@ -3,12 +3,13 @@ from __future__ import annotations
 
 from typing import Any
 
-import redis
 from backend.config import Config
 
 
 def cleanup_old_task_cache(redis_client: Any, hours: int = 24) -> int:
     """清理超过指定小时数的任务相关缓存"""
+    if Config.DEPLOY_MODE == 'desktop':
+        return 0
     patterns = [
         "text_progress:task:*",
         "docx_done_indices:task:*",
@@ -35,6 +36,8 @@ def cleanup_old_task_cache(redis_client: Any, hours: int = 24) -> int:
 
 def cleanup_orphaned_workers(redis_client: Any) -> int:
     """清理孤儿 worker 注册信息"""
+    if Config.DEPLOY_MODE == 'desktop':
+        return 0
     # 获取所有 worker keys
     worker_keys = []
     cursor = 0
@@ -56,12 +59,16 @@ def cleanup_orphaned_workers(redis_client: Any) -> int:
     return cleaned
 
 if __name__ == '__main__':
-    redis_conn = redis.from_url(Config.REDIS_URL, decode_responses=True)
+    if Config.DEPLOY_MODE == 'desktop':
+        print("📦 Desktop 模式无需清理 Redis")
+    else:
+        import redis as redis_lib
+        redis_conn = redis_lib.from_url(Config.REDIS_URL, decode_responses=True)
 
-    print("🧹 开始清理 Redis 缓存...")
-    task_cleaned = cleanup_old_task_cache(redis_conn)
-    worker_cleaned = cleanup_orphaned_workers(redis_conn)
+        print("🧹 开始清理 Redis 缓存...")
+        task_cleaned = cleanup_old_task_cache(redis_conn)
+        worker_cleaned = cleanup_orphaned_workers(redis_conn)
 
-    print(f"✅ 清理完成：")
-    print(f"   - 任务缓存: {task_cleaned} 个")
-    print(f"   - 孤儿 Worker: {worker_cleaned} 个")
+        print(f"✅ 清理完成：")
+        print(f"   - 任务缓存: {task_cleaned} 个")
+        print(f"   - 孤儿 Worker: {worker_cleaned} 个")

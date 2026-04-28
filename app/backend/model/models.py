@@ -40,7 +40,12 @@ class User(db.Model):
             return False
         return check_password_hash(self.password_hash, password)
 
-from sqlalchemy.dialects.mysql import LONGTEXT
+from backend.config import Config
+
+if Config.DEPLOY_MODE == 'desktop':
+    LONGTEXT = db.Text
+else:
+    from sqlalchemy.dialects.mysql import LONGTEXT
 
 
 class Task(db.Model):
