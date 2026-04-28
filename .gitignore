@@ -60,7 +60,7 @@ dist/
 build/
 dist/
 *.spec
-!AIpolish.spec
+!AcademicPolisher.spec
 
 # ==========================================
 # 10. Claude Code

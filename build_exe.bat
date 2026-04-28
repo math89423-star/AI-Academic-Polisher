@@ -1,6 +1,6 @@
 @echo off
 chcp 65001 >nul 2>&1
-title AIpolish - Build EXE
+title AI Academic Polisher - Build EXE
 
 echo ========================================
 echo   AIpolish Windows EXE Builder
@@ -50,7 +50,7 @@ if %errorlevel% neq 0 (
 :: ========== Build EXE ==========
 echo.
 echo Building EXE...
-pyinstaller AIpolish.spec --noconfirm --clean
+pyinstaller AcademicPolisher.spec --noconfirm --clean
 
 if %errorlevel% neq 0 (
     echo.
@@ -61,8 +61,8 @@ if %errorlevel% neq 0 (
 
 :: ========== Copy .env ==========
 if exist ".env.desktop.example" (
-    copy /Y .env.desktop.example dist\AIpolish\.env >nul
-    echo [OK] Copied .env.desktop.example to dist\AIpolish\.env
+    copy /Y .env.desktop.example dist\AcademicPolisher\.env >nul
+    echo [OK] Copied .env.desktop.example to dist\AcademicPolisher\.env
 ) else (
     echo [INFO] No .env.desktop.example found. Create .env manually next to AIpolish.exe
 )
@@ -70,9 +70,9 @@ if exist ".env.desktop.example" (
 echo.
 echo ========================================
 echo   Build complete!
-echo   Output: dist\AIpolish\
+echo   Output: dist\AcademicPolisher\
 echo   Usage:
-echo     1. Edit dist\AIpolish\.env (set your API key)
-echo     2. Double-click dist\AIpolish\AIpolish.exe
+echo     1. Edit dist\AcademicPolisher\.env (set your API key)
+echo     2. Double-click dist\AcademicPolisher\AcademicPolisher.exe
 echo ========================================
 pause

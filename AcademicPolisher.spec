@@ -1,15 +1,22 @@
 # -*- mode: python ; coding: utf-8 -*-
 import os
+from PyInstaller.utils.hooks import collect_all
 
 block_cipher = None
 app_dir = os.path.join(os.getcwd(), 'app')
+
+# 强制收集 flask_sqlalchemy 全部内容
+fsa_datas, fsa_binaries, fsa_hiddenimports = collect_all('flask_sqlalchemy')
+fc_datas, fc_binaries, fc_hiddenimports = collect_all('flask_cors')
 
 a = Analysis(
     [os.path.join(app_dir, 'main.py')],
     pathex=[app_dir],
     datas=[
         (os.path.join(app_dir, 'frontend', 'dist'), os.path.join('frontend', 'dist')),
-    ],
+        (os.path.join(app_dir, 'backend', 'prompts'), os.path.join('backend', 'prompts')),
+    ] + fsa_datas + fc_datas,
+    binaries=fsa_binaries + fc_binaries,
     hiddenimports=[
         # --- app modules ---
         'backend',
@@ -18,6 +25,7 @@ a = Analysis(
         'backend.extensions',
         'backend.memory_backend',
         'backend.memory_queue',
+        'backend.prompts_config',
         'backend.routes.auth',
         'backend.routes.task',
         'backend.routes.admin',
@@ -28,6 +36,11 @@ a = Analysis(
         'backend.services.api_config_service',
         'backend.services.progress_publisher',
         'backend.services.cancellation_checker',
+        'backend.services.user_service',
+        'backend.services.prompt_builder',
+        'backend.services.response_extractor',
+        'backend.services.retry_policy',
+        'backend.services.ai_client',
         'backend.processors.base_processor',
         'backend.processors.text_processor',
         'backend.processors.docx_processor',
@@ -36,6 +49,8 @@ a = Analysis(
         'backend.utils.helpers',
         'backend.utils.text_hash',
         'backend.utils.logging_config',
+        'backend.utils.decorators',
+        'backend.utils.docx_service',
         # --- Flask ecosystem ---
         'flask',
         'flask.json',
@@ -64,12 +79,11 @@ a = Analysis(
         'itsdangerous',
         'blinker',
         'certifi',
-        'charset_normalizer',
         'idna',
         'sniffio',
         'anyio',
         'h11',
-    ],
+    ] + fsa_hiddenimports + fc_hiddenimports,
     excludes=[
         'mysql',
         'mysql.connector',
@@ -93,7 +107,7 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name='AIpolish',
+    name='AcademicPolisher',
     console=True,
     icon=None,
 )
@@ -103,5 +117,5 @@ coll = COLLECT(
     a.binaries,
     a.zipfiles,
     a.datas,
-    name='AIpolish',
+    name='AcademicPolisher',
 )

@@ -110,13 +110,13 @@ pip install -r app/requirements.txt
 build_exe.bat
 ```
 
-打包完成后 `dist\AIpolish\` 目录即为可分发产物。
+打包完成后 `dist\AcademicPolisher\` 目录即为可分发产物。
 
 ### 使用方式
 
-1. 将 `.env.desktop.example` 复制到 `dist\AIpolish\.env`
+1. 将 `.env.desktop.example` 复制到 `dist\AcademicPolisher\.env`
 2. 编辑 `.env`，填入你的 AI API Key 和其他配置
-3. 双击 `AIpolish.exe` 启动
+3. 双击 `AcademicPolisher.exe` 启动
 4. 浏览器自动打开 `http://127.0.0.1:5000`
 5. 管理后台 `http://127.0.0.1:5000/admin`
 
