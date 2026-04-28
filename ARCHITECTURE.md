@@ -1,6 +1,6 @@
 # AIpolish 架构全景图
 
-> AI 学术论文润色系统 — 全局架构与函数依赖上帝视图
+> AI 学术论文润色系统 — 一套代码，两个灵魂（Server / Desktop 双模式）
 
 ## 系统总览
 
@@ -11,11 +11,11 @@
 │  │LoginView │  │MainView  │  │AdminApp  │  │ErrorToast│            │
 │  └────┬─────┘  └────┬─────┘  └────┬─────┘  └──────────┘            │
 │       │   ┌─────────┴──────────┐   │                                │
-│       │   │ EditorPanel        │   │                                │
-│       │   │ ResultPanel        │   │                                │
-│       │   │ Sidebar            │   │                                │
-│       │   │ TopHeader          │   │                                │
-│       │   │ ConfigSwitcher     │   │                                │
+│       │   │ EditorPanel        │   ├─ UserManagementTab             │
+│       │   │ ResultPanel        │   ├─ ApiConfigTab                  │
+│       │   │ Sidebar            │   ├─ ThemeSettingsTab              │
+│       │   │ TopHeader          │   └─ SystemSettingsTab             │
+│       │   │ ConfigSwitcher     │                                    │
 │       │   └─────────┬──────────┘   │                                │
 │       │         taskStore (Pinia)  │                                │
 │       └─────────┬──────────────────┘                                │
@@ -38,19 +38,20 @@
 │                    │ enqueue                                        │
 │              ┌─────┴─────┐                                          │
 │              │ RQ Queue  │ ←── Redis (ai_tasks)                     │
+│              │ [Server]  │     [Desktop: MemoryQueue]               │
 │              └─────┬─────┘                                          │
 └────────────────────┼────────────────────────────────────────────────┘
                      │
 ┌────────────────────┼────────────────────────────────────────────────┐
-│  RQ Worker         │                                                │
+│  RQ Worker [Server] / MemoryQueue Worker Thread [Desktop]           │
 │              ┌─────┴──────────┐                                     │
 │              │ worker_engine  │                                      │
 │              │ process_task() │                                      │
 │              └──┬──────────┬──┘                                     │
-│     ┌───────────┴──┐  ┌───┴────────────┐                           │
-│     │TextProcessor │  │DocxProcessor   │                            │
-│     └──────┬───────┘  └───┬────────────┘                           │
-│            └──────┬───────┘                                         │
+│     ┌───────────┴──┐  ┌───┴────────────┐  ┌──────────────┐         │
+│     │TextProcessor │  │DocxProcessor   │  │PdfProcessor  │         │
+│     └──────┬───────┘  └───┬────────────┘  └──────┬───────┘         │
+│            └──────┬───────┴──────────────────────┘                  │
 │           BaseTaskProcessor                                         │
 │            ┌──────┴───────────────────────┐                         │
 │     ┌──────┴──────┐  ┌──────────────────┐ │                        │
@@ -69,14 +70,20 @@
                                                                       │
 ┌─────────────────────────────────────────────────────────────────────┘
 │  数据层
-│  ┌──────────┐  ┌──────────────────────────────────────┐
-│  │ SQLite   │  │ Redis                                │
-│  │ User     │  │ - RQ 任务队列 (ai_tasks)              │
-│  │ Task     │  │ - Pub/Sub 进度推送 (progress:*)       │
-│  │ ApiConfig│  │ - 取消信号 (cancel:*)                 │
-│  │ System   │  │ - 文本去重哈希 (text_hash:*)          │
-│  │ Setting  │  │ - DOCX完成标记 (docx_done:*)          │
-│  └──────────┘  └──────────────────────────────────────┘
+│  ┌──────────────────────────────────────────────────────────────────┐
+│  │ Server 模式                    │ Desktop 模式                     │
+│  ├──────────────────────────────────────────────────────────────────┤
+│  │ MySQL                          │ SQLite                          │
+│  │  User / Task / ApiConfig /     │  (同表结构, LONGTEXT→Text)       │
+│  │  SystemSetting                 │                                 │
+│  ├──────────────────────────────────────────────────────────────────┤
+│  │ Redis                          │ MemoryRedis (内存字典)            │
+│  │  - RQ 任务队列 (ai_tasks)       │  - KV / Hash / Set / PubSub    │
+│  │  - Pub/Sub 进度推送             │  - 线程安全 (threading.Lock)     │
+│  │  - 取消信号 / 文本哈希 / DOCX标记│                                 │
+│  ├──────────────────────────────────────────────────────────────────┤
+│  │ RQ Queue (独立 Worker 进程)     │ MemoryQueue (守护线程)           │
+│  └──────────────────────────────────────────────────────────────────┘
 ```
 
 ## 目录结构
@@ -87,8 +94,10 @@ app/
 ├── run_worker.py                    # RQ Worker 入口
 ├── backend/
 │   ├── __init__.py                  # create_app() 工厂
-│   ├── config.py                    # Config / WorkerConfig / SSEConfig / RedisConfig
-│   ├── extensions.py                # db, redis_client, task_queue, executor
+│   ├── config.py                    # Config / DEPLOY_MODE / WorkerConfig / SSEConfig / RedisConfig
+│   ├── extensions.py                # db, redis_client, task_queue (工厂: 按模式创建)
+│   ├── memory_backend.py            # MemoryRedis (Desktop 模式内存 Redis 替代)
+│   ├── memory_queue.py              # MemoryQueue (Desktop 模式内存任务队列+守护线程)
 │   ├── prompts_config.py            # 提示词加载 & 策略配置
 │   ├── worker_engine.py             # process_task() 任务分发
 │   ├── model/
@@ -112,7 +121,8 @@ app/
 │   ├── processors/
 │   │   ├── base_processor.py        # 抽象基类 (模板方法)
 │   │   ├── text_processor.py        # 文本任务处理
-│   │   └── docx_processor.py        # DOCX任务处理
+│   │   ├── docx_processor.py        # DOCX任务处理
+│   │   └── pdf_processor.py         # PDF任务处理
 │   └── utils/
 │       ├── helpers.py               # 文本切片, 标题提取
 │       ├── docx_service.py          # DOCX读写工具
@@ -125,10 +135,85 @@ app/
         ├── main.js / admin.js       # Vue入口
         ├── App.vue / AdminApp.vue   # 根组件
         ├── api/index.js             # HTTP + SSE 客户端
+        ├── assets/
+        │   ├── style.css            # 主应用样式
+        │   └── admin-shared.css     # 管理后台共享样式
         ├── stores/taskStore.js      # Pinia 全局状态
         ├── stores/sseManager.js     # SSE 连接生命周期管理
         ├── views/                   # LoginView, MainView
-        └── components/              # Editor, Result, Sidebar, Header, Config, Toast
+        └── components/
+            ├── admin/               # 管理后台 tab 组件
+            │   ├── UserManagementTab.vue
+            │   ├── ApiConfigTab.vue
+            │   ├── ThemeSettingsTab.vue
+            │   └── SystemSettingsTab.vue
+            └── (Editor, Result, Sidebar, Header, Config, Toast)
+```
+
+## 双模式架构 (DEPLOY_MODE)
+
+> 一套代码，两个灵魂 — 通过 `DEPLOY_MODE` 环境变量自动切换运行模式
+
+### 模式判定
+
+```python
+# config.py → _resolve_deploy_mode()
+DEPLOY_MODE = env("DEPLOY_MODE", "auto")  # auto / server / desktop
+# auto 模式: Windows → desktop, Linux → server
+```
+
+### 模式对比
+
+| 维度 | Server 模式 (Linux) | Desktop 模式 (Windows) |
+|------|---------------------|------------------------|
+| 数据库 | MySQL (LONGTEXT) | SQLite (db.Text) |
+| 缓存/消息 | Redis | MemoryRedis (内存字典+Lock) |
+| 任务队列 | RQ Queue + 独立 Worker 进程 | MemoryQueue + 守护线程 |
+| 启动方式 | Gunicorn + rq worker | Flask threading on 127.0.0.1 |
+| 建表 | init_db.py (MySQL CREATE DATABASE) | create_app() 内 db.create_all() |
+| 清理 | redis_cleanup.py 定期清理 | 无需清理 (进程退出即释放) |
+
+### 关键实现
+
+```
+extensions.py (工厂模式)
+  │
+  ├─ DEPLOY_MODE == "server"
+  │   ├─ redis_client = Redis(host, port, db)
+  │   └─ task_queue   = rq.Queue("ai_tasks", connection=redis_client)
+  │
+  └─ DEPLOY_MODE == "desktop"
+      ├─ redis_client = MemoryRedis()        ← memory_backend.py
+      └─ task_queue   = MemoryQueue()        ← memory_queue.py
+
+MemoryRedis (memory_backend.py)
+  ├─ 线程安全: threading.Lock 保护所有操作
+  ├─ KV: get/set/delete/exists/expire/keys
+  ├─ Hash: hset/hget/hgetall/hdel
+  ├─ Set: sadd/srem/smembers/sismember
+  └─ PubSub: publish/subscribe (threading.Condition 通知)
+
+MemoryQueue (memory_queue.py)
+  ├─ 内置 queue.Queue + daemon worker thread
+  ├─ enqueue(func, *args) → 放入队列
+  ├─ set_app(app) → 注入 Flask app context
+  └─ worker loop: 取任务 → with app.app_context(): func(*args)
+```
+
+### Desktop 模式启动流程
+
+```
+app/main.py
+  │
+  ├─ create_app()
+  │   ├─ SQLAlchemy bind = sqlite:///aipolish.db
+  │   ├─ db.create_all()  (自动建表)
+  │   └─ 自动创建 admin 用户
+  │
+  ├─ memory_queue.set_app(app)
+  ├─ memory_queue.start_worker()  ← 守护线程
+  │
+  └─ app.run(host="127.0.0.1", threaded=True)
 ```
 
 ## 后端函数依赖图
@@ -169,7 +254,8 @@ RQ Worker 接收任务
   │
   ├─ _get_processor(task)  ─── 工厂方法
   │   ├─ task_type == "text" → TextTaskProcessor
-  │   └─ task_type == "docx" → DocxTaskProcessor
+  │   ├─ task_type == "docx" → DocxTaskProcessor
+  │   └─ task_type == "pdf"  → PdfTaskProcessor
   │
   └─ processor.run()  ─── 模板方法 (BaseTaskProcessor)
       │
@@ -253,6 +339,16 @@ main.js ──→ App.vue
                           ├─ EditorPanel.vue     ─→ taskStore (创建任务, 上传DOCX)
                           └─ ResultPanel.vue     ─→ taskStore (润色结果, 取消, 重试)
 
+admin.js ──→ AdminApp.vue (登录 + Tab切换 + 共享apiConfigs)
+             │
+             ├─ 未登录 → 登录表单
+             │
+             └─ 已登录 → Tab 切换
+                          ├─ UserManagementTab.vue    ─→ props: apiConfigs, adminUsername
+                          ├─ ApiConfigTab.vue         ─→ props: adminUsername, emits: configs-updated
+                          ├─ ThemeSettingsTab.vue     ─→ props: adminUsername
+                          └─ SystemSettingsTab.vue    ─→ props: adminUsername
+
 taskStore.js (Pinia)
   ├─ State:   tasks{}, currentTaskId, strategies[], eventSource, pendingCount
   ├─ Actions: createTask()    → taskAPI.createTask()    → startSSE()
@@ -329,7 +425,7 @@ export function createSSEManager() { ... }
 
 ### ✅ 良好实践
 
-1. **工厂模式**: `worker_engine._get_processor()` 根据任务类型选择处理器
+1. **工厂模式**: `worker_engine._get_processor()` 根据任务类型选择处理器; `extensions.py` 根据 DEPLOY_MODE 创建对应后端实例
 2. **策略模式**: `TextTaskProcessor` vs `DocxTaskProcessor` 继承 `BaseTaskProcessor`
 3. **模板方法**: `BaseTaskProcessor.run()` 定义流程，子类实现 `process()`
 4. **观察者模式**: Redis Pub/Sub 解耦进度推送
@@ -456,6 +552,13 @@ export function createSSEManager() { ... }
 - **解耦**: Worker 和 Flask 无需共享状态
 - **扩展性**: 支持多 Worker 并发
 
+### 5. 为什么做 Desktop 双模式而非独立分支?
+- **一套代码**: 避免 server/desktop 两个分支长期分叉维护
+- **工厂模式切换**: extensions.py 根据 DEPLOY_MODE 创建不同实例，上层代码零感知
+- **零外部依赖**: Desktop 模式无需安装 Redis/MySQL，降低 Windows 用户门槛
+- **MemoryRedis 接口兼容**: 实现与 redis-py 相同的方法签名，Processor/Publisher 无需修改
+- **守护线程替代进程**: MemoryQueue 用 daemon thread 模拟 RQ Worker，单进程即可运行
+
 ---
 
 ## 安全边界
@@ -516,14 +619,15 @@ User.query.filter_by(username=username).first()
 
 ## 扩展性考虑
 
-### 水平扩展
+### 水平扩展 (Server 模式)
 - **Flask**: 多进程 (Gunicorn) + Nginx 负载均衡
 - **RQ Worker**: 多实例监听同一队列
 - **Redis**: Redis Cluster (分片)
 
 ### 垂直扩展
-- **数据库**: SQLite → PostgreSQL (支持并发写)
+- **数据库**: Desktop SQLite → Server MySQL → PostgreSQL (按需升级)
 - **文件存储**: 本地文件 → OSS (对象存储)
+- **Desktop → Server**: 修改 DEPLOY_MODE + 迁移数据库即可切换
 
 ### 功能扩展
 - **多模型支持**: 已支持 (ApiConfig 表)
@@ -557,6 +661,8 @@ User.query.filter_by(username=username).first()
 
 ## 部署架构
 
+### Server 模式 (Linux)
+
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │  Nginx (反向代理)                                            │
@@ -586,7 +692,7 @@ User.query.filter_by(username=username).first()
 └─────────────────────────────────────────────────────────────┘
                           │
 ┌─────────────────────────┴───────────────────────────────────┐
-│  SQLite / PostgreSQL                                        │
+│  MySQL                                                      │
 │  ├─ User                                                    │
 │  ├─ Task                                                    │
 │  ├─ ApiConfig                                               │
@@ -594,11 +700,29 @@ User.query.filter_by(username=username).first()
 └─────────────────────────────────────────────────────────────┘
 ```
 
+### Desktop 模式 (Windows)
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  单进程 Flask (threaded=True, 127.0.0.1:5000)               │
+│                                                             │
+│  ┌─────────────────┐  ┌──────────────┐  ┌───────────────┐  │
+│  │ Flask Routes    │  │ MemoryRedis  │  │ MemoryQueue   │  │
+│  │ (主线程)        │  │ (内存字典)    │  │ (守护线程)     │  │
+│  └────────┬────────┘  └──────────────┘  └───────┬───────┘  │
+│           │                                      │          │
+│           └──────────── SQLite ──────────────────┘          │
+│                      (aipolish.db)                           │
+└─────────────────────────────────────────────────────────────┘
+  无需安装 Redis / MySQL / Nginx，双击即用
+```
+
 ---
 
 ## 总结
 
 ### 架构优势
+✅ 双模式架构 — 一套代码适配 Server (Linux) 和 Desktop (Windows)  
 ✅ 清晰的分层架构 (Routes → Services → Processors)  
 ✅ 异步任务队列 (RQ) 解耦请求和处理  
 ✅ 实时进度推送 (SSE + Redis Pub/Sub)  
