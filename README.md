@@ -39,8 +39,8 @@ sudo systemctl enable docker && sudo systemctl start docker
 
 ```bash
 # 1. 克隆仓库
-git clone https://github.com/math89423-star/AIpolish.git
-cd AIpolish
+git clone https://github.com/math89423-star/AI-Academic-Polisher.git
+cd AI-Academic-Polisher
 
 # 2. 启动（首次会自动创建 .env 并提示编辑）
 bash start.sh up
@@ -99,8 +99,8 @@ Desktop 模式无需 MySQL、Redis，打包为单个 EXE 目录分发。
 
 ```bash
 # 1. 克隆仓库
-git clone -b dev https://github.com/math89423-star/AIpolish.git
-cd AIpolish
+git clone -b dev https://github.com/math89423-star/AI-Academic-Polisher.git
+cd AI-Academic-Polisher
 
 # 2. 安装 Python 依赖
 pip install -r app/requirements.txt
