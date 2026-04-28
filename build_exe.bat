@@ -32,12 +32,12 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
-:: Copy .env.example to output
-if exist ".env.example" (
-    copy /Y .env.example dist\AIpolish\.env >nul
-    echo Copied .env template to dist\AIpolish\
+:: Copy .env.desktop.example to output
+if exist ".env.desktop.example" (
+    copy /Y .env.desktop.example dist\AIpolish\.env >nul
+    echo Copied .env.desktop.example to dist\AIpolish\.env
 ) else (
-    echo [INFO] No .env.example found. Create .env manually next to AIpolish.exe
+    echo [INFO] No .env.desktop.example found. Create .env manually next to AIpolish.exe
 )
 
 echo.
