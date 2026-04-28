@@ -1,6 +1,6 @@
-# AIpolish 架构全景图
+# AI Academic Polisher — 架构全景图
 
-> AI 学术论文润色系统 — 一套代码，两个灵魂（Server / Desktop 双模式）
+> 一套代码，两个灵魂（Server / Desktop 双模式）
 
 ## 系统总览
 
