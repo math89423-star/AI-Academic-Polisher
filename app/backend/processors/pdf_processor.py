@@ -8,6 +8,7 @@ from __future__ import annotations
 from typing import Optional
 
 import os
+from backend import paths
 import re
 import fitz
 import docx
@@ -133,8 +134,8 @@ class PdfTaskProcessor(BaseTaskProcessor):
 
 
     def _process_single_paragraph(self, para_idx: int, text_content: str) -> str:
-        if len(text_content) > WorkerConfig.TEXT_CHUNK_SIZE:
-            sub_chunks = split_text_into_chunks(text_content, max_chars=WorkerConfig.TEXT_CHUNK_SIZE)
+        if len(text_content) > WorkerConfig.get_chunk_size():
+            sub_chunks = split_text_into_chunks(text_content, max_chars=WorkerConfig.get_chunk_size())
             polished_sub = []
             for sc in sub_chunks:
                 polished_sub.append(self.ai_service.generate_sync(text=sc, mode=self.task.mode, strategy=self.task.strategy))
@@ -148,7 +149,7 @@ class PdfTaskProcessor(BaseTaskProcessor):
             text = results_dict.get(i, para_text)
             doc.add_paragraph(text)
 
-        output_path = os.path.join('outputs', f"polished_{self.task_id}.docx")
+        output_path = os.path.join(paths.get_output_dir(), f"polished_{self.task_id}.docx")
         doc.save(output_path)
         self.task.result_file_path = output_path
         db.session.commit()

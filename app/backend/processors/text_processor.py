@@ -21,7 +21,7 @@ class TextTaskProcessor(BaseTaskProcessor):
         # 切片文本
         chunks = split_text_into_chunks(
             self.task.original_text,
-            max_chars=WorkerConfig.TEXT_CHUNK_SIZE
+            max_chars=WorkerConfig.get_chunk_size()
         )
         total_chunks = len(chunks)
 

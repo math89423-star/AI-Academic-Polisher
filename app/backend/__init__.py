@@ -9,6 +9,7 @@ from flask_cors import CORS
 
 from backend.config import Config
 from backend.extensions import db
+from backend.paths import get_frontend_dist, get_upload_dir
 
 def create_app(config_class: Type[Any] = Config) -> Flask:
     """
@@ -17,10 +18,8 @@ def create_app(config_class: Type[Any] = Config) -> Flask:
     # 获取项目根目录 (backend 的上一级)
     base_dir = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 
-    # Desktop 模式：static_folder 指向前端构建产物
-    # Server 模式：static_folder 指向源码目录（nginx 负责服务）
     if Config.DEPLOY_MODE == 'desktop':
-        static_folder = os.path.join(base_dir, 'frontend', 'dist')
+        static_folder = get_frontend_dist()
     else:
         static_folder = os.path.join(base_dir, 'frontend')
 
@@ -39,8 +38,8 @@ def create_app(config_class: Type[Any] = Config) -> Flask:
     # Desktop 模式：自动创建 SQLite 表结构和管理员账号
     if Config.DEPLOY_MODE == 'desktop':
         with app.app_context():
+            from backend.model.models import User, Task, ApiConfig, SystemSetting
             db.create_all()
-            from backend.model.models import User
             if not User.query.filter_by(role='admin').first():
                 admin = User(username=Config.ADMIN_USERNAME, role='admin', is_active=True)
                 admin.set_password(Config.ADMIN_PASSWORD)
@@ -69,8 +68,7 @@ def create_app(config_class: Type[Any] = Config) -> Flask:
         return {"status": "ok", "message": "AI Polisher API is running!"}
 
     # 上传文件静态服务
-    upload_dir = os.path.join(base_dir, 'uploads')
-    os.makedirs(upload_dir, exist_ok=True)
+    upload_dir = get_upload_dir()
 
     @app.route('/uploads/<path:filename>')
     def serve_upload(filename):
@@ -79,7 +77,7 @@ def create_app(config_class: Type[Any] = Config) -> Flask:
 
     # Desktop 模式：Flask 直接服务前端（无 nginx）
     if Config.DEPLOY_MODE == 'desktop':
-        dist_dir = os.path.join(base_dir, 'frontend', 'dist')
+        dist_dir = get_frontend_dist()
 
         @app.route('/')
         def serve_index():

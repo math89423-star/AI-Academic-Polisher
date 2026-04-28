@@ -13,6 +13,7 @@ from backend.model.models import Task, User
 from backend.utils.helpers import extract_title
 from backend.utils.text_hash import store_text_hash
 import os
+from backend import paths
 import subprocess
 from werkzeug.utils import secure_filename
 
@@ -81,7 +82,7 @@ class TaskService:
         """
         filename = secure_filename(file.filename)
         ext = os.path.splitext(filename)[1].lower()
-        save_path = os.path.join('uploads', f"{user.id}_{filename}")
+        save_path = os.path.join(paths.get_upload_dir(), f"{user.id}_{filename}")
         file.save(save_path)
 
         if ext == '.doc':
@@ -114,7 +115,7 @@ class TaskService:
     def create_pdf_task(self, user: User, file: Any, mode: str, strategy: str) -> Task:
         """创建PDF文档任务"""
         filename = secure_filename(file.filename)
-        save_path = os.path.join('uploads', f"{user.id}_{filename}")
+        save_path = os.path.join(paths.get_upload_dir(), f"{user.id}_{filename}")
         file.save(save_path)
 
         try:

@@ -8,6 +8,7 @@ from __future__ import annotations
 from typing import Optional
 
 import os
+from backend import paths
 import docx
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from backend.processors.base_processor import BaseTaskProcessor
@@ -175,8 +176,8 @@ class DocxTaskProcessor(BaseTaskProcessor):
         logger.debug(f"处理段落 {para_idx}")
 
         # 如果段落太长，先切片
-        if len(text_content) > WorkerConfig.TEXT_CHUNK_SIZE:
-            sub_chunks = split_text_into_chunks(text_content, max_chars=WorkerConfig.TEXT_CHUNK_SIZE)
+        if len(text_content) > WorkerConfig.get_chunk_size():
+            sub_chunks = split_text_into_chunks(text_content, max_chars=WorkerConfig.get_chunk_size())
             polished_sub = []
 
             for sc in sub_chunks:
@@ -210,19 +211,18 @@ class DocxTaskProcessor(BaseTaskProcessor):
 
     def _save_document(self) -> None:
         """保存最终文档"""
-        output_path = os.path.join('outputs', f"polished_{self.task_id}.docx")
+        output_path = os.path.join(paths.get_output_dir(), f"polished_{self.task_id}.docx")
         self.doc.save(output_path)
         self.task.result_file_path = output_path
         db.session.commit()
 
         logger.info(f"任务 {self.task_id} 文档已保存: {output_path}")
 
-        # 推送下载链接
         self.progress_publisher.publish_download(f"/api/tasks/download/{self.task_id}")
 
     def _save_temp_document(self) -> None:
         """保存临时文档（任务取消时）"""
-        temp_path = os.path.join('outputs', f"polished_temp_{self.task_id}.docx")
+        temp_path = os.path.join(paths.get_output_dir(), f"polished_temp_{self.task_id}.docx")
         self.doc.save(temp_path)
         self.task.result_file_path = temp_path
         db.session.commit()

@@ -156,7 +156,7 @@ def stream_results(task_id):
                 if task and task.status == 'processing':
                     from backend.utils.helpers import split_text_into_chunks
                     from backend.config import WorkerConfig
-                    chunks = split_text_into_chunks(task.original_text or '', max_chars=WorkerConfig.TEXT_CHUNK_SIZE)
+                    chunks = split_text_into_chunks(task.original_text or '', max_chars=WorkerConfig.get_chunk_size())
                     total = len(chunks)
                     if total > 1:
                         progress_key = RedisKeyManager.progress_key(task_id)
@@ -310,10 +310,11 @@ def download_docx(task_id):
     if not task or task.status != 'completed' or not task.result_file_path:
         return jsonify({"error": "文件不存在或尚未完成"}), 404
 
-    # 获取项目绝对路径并拼接
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    project_root = os.path.abspath(os.path.join(current_dir, '../../'))
-    absolute_file_path = os.path.join(project_root, task.result_file_path)
+    from backend.paths import get_runtime_dir
+    if os.path.isabs(task.result_file_path):
+        absolute_file_path = task.result_file_path
+    else:
+        absolute_file_path = os.path.join(get_runtime_dir(), task.result_file_path)
 
     return send_file(
         absolute_file_path,

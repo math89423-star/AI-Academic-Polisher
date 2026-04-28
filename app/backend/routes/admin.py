@@ -279,6 +279,41 @@ def test_api_config():
         return jsonify({"success": False, "message": f"测试异常: {str(e)}"}), 500
 
 
+# === 系统设置 ===
+
+@admin_bp.route('/chunk_size', methods=['GET'])
+@require_admin
+def get_chunk_size():
+    """获取当前分块大小设置"""
+    from backend.config import WorkerConfig
+    return jsonify({"chunk_size": WorkerConfig.get_chunk_size()}), 200
+
+
+@admin_bp.route('/chunk_size', methods=['POST'])
+@require_admin
+def set_chunk_size():
+    """设置分块大小"""
+    from backend.model.models import SystemSetting
+    from backend.extensions import db
+
+    data = request.json
+    size = data.get('chunk_size')
+
+    if not isinstance(size, int) or size < 500 or size > 5000:
+        return jsonify({"error": "分块大小需为 500~5000 之间的整数"}), 400
+
+    setting = SystemSetting.query.filter_by(key='chunk_size').first()
+    if not setting:
+        setting = SystemSetting(key='chunk_size')
+        db.session.add(setting)
+
+    setting.value = str(size)
+    db.session.commit()
+
+    logger.info(f"管理员更新分块大小: {size}")
+    return jsonify({"message": "分块大小更新成功", "chunk_size": size}), 200
+
+
 # === 主题管理 ===
 
 @admin_bp.route('/theme', methods=['GET'])
@@ -325,8 +360,8 @@ def upload_theme_bg():
         return jsonify({"error": "文件名为空"}), 400
 
     filename = secure_filename(file.filename)
-    upload_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../uploads')
-    os.makedirs(upload_dir, exist_ok=True)
+    from backend.paths import get_upload_dir
+    upload_dir = get_upload_dir()
 
     filepath = os.path.join(upload_dir, filename)
     file.save(filepath)

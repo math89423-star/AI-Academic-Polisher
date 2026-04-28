@@ -8,7 +8,8 @@ from __future__ import annotations
 from typing import Any, Union
 
 import json
-import redis as redis_module
+from typing import Any
+
 from backend.config import RedisKeyManager
 from backend.utils.logging_config import get_logger
 
@@ -18,7 +19,7 @@ logger = get_logger(__name__)
 class ProgressPublisher:
     """进度推送器"""
 
-    def __init__(self, redis_client: redis_module.Redis, task_id: int) -> None:
+    def __init__(self, redis_client: Any, task_id: int) -> None:
         """
         初始化进度推送器
 

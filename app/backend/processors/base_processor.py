@@ -6,9 +6,8 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Any, Optional
 
-import redis as redis_module
 from backend.services.progress_publisher import ProgressPublisher
 from backend.services.cancellation_checker import CancellationChecker
 from backend.services.ai_service_refactored import AIService
@@ -22,7 +21,7 @@ logger = get_logger(__name__)
 class BaseTaskProcessor(ABC):
     """任务处理器基类"""
 
-    def __init__(self, task: object, redis_client: redis_module.Redis) -> None:
+    def __init__(self, task: object, redis_client: Any) -> None:
         self.task = task
         self.task_id: int = task.id
         self.redis_client = redis_client

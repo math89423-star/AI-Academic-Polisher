@@ -1,9 +1,9 @@
 import os
 import sys
 from dotenv import load_dotenv
+from backend.paths import get_dotenv_path, get_data_dir
 
-# 加载 .env 环境变量
-load_dotenv()
+load_dotenv(dotenv_path=get_dotenv_path())
 
 
 def _resolve_deploy_mode() -> str:
@@ -24,13 +24,12 @@ class Config:
 
     # --- 数据库配置 ---
     if DEPLOY_MODE == 'desktop':
-        _db_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'data')
-        os.makedirs(_db_dir, exist_ok=True)
+        _db_dir = get_data_dir()
         SQLALCHEMY_DATABASE_URI = f"sqlite:///{os.path.join(_db_dir, 'ai_polisher.db')}"
         SQLALCHEMY_ENGINE_OPTIONS = {}
     else:
         DB_USER = os.environ.get('DB_USER', 'root')
-        DB_PASSWORD = os.environ.get('DB_PASSWORD', '123456')
+        DB_PASSWORD = os.environ.get('DB_PASSWORD', 'admin')
         DB_HOST = os.environ.get('DB_HOST', '127.0.0.1')
         DB_PORT = os.environ.get('DB_PORT', '3306')
         DB_NAME = os.environ.get('DB_NAME', 'ai_polisher')
