@@ -1,4 +1,5 @@
 @echo off
+chcp 65001 >nul 2>&1
 title AIpolish - Build EXE
 
 echo ========================================
@@ -6,23 +7,49 @@ echo   AIpolish Windows EXE Builder
 echo ========================================
 echo.
 
-:: Check frontend build
-if not exist "app\frontend\dist\index.html" (
-    echo [ERROR] Frontend not built. Please run start_windows.bat first, or:
-    echo   cd app\frontend ^&^& npm install ^&^& npm run build
+:: ========== Check Node.js ==========
+where node >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [ERROR] Node.js not found. Please install Node.js 18+
+    echo   https://nodejs.org/
     pause
     exit /b 1
 )
 
-:: Install PyInstaller if missing
+:: ========== Build frontend if needed ==========
+if not exist "app\frontend\dist\index.html" (
+    echo [INFO] Building frontend...
+    pushd app\frontend
+    call npm install --silent 2>nul
+    if %errorlevel% neq 0 (
+        echo [ERROR] npm install failed.
+        popd
+        pause
+        exit /b 1
+    )
+    call npm run build
+    if %errorlevel% neq 0 (
+        echo [ERROR] Frontend build failed.
+        popd
+        pause
+        exit /b 1
+    )
+    popd
+    echo [OK] Frontend built.
+) else (
+    echo [OK] Frontend already built, skipping.
+)
+
+:: ========== Install PyInstaller if missing ==========
 pip show pyinstaller >nul 2>&1
 if %errorlevel% neq 0 (
     echo Installing PyInstaller...
     pip install pyinstaller
 )
 
+:: ========== Build EXE ==========
 echo.
-echo Building...
+echo Building EXE...
 pyinstaller AIpolish.spec --noconfirm --clean
 
 if %errorlevel% neq 0 (
@@ -32,10 +59,10 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
-:: Copy .env.desktop.example to output
+:: ========== Copy .env ==========
 if exist ".env.desktop.example" (
     copy /Y .env.desktop.example dist\AIpolish\.env >nul
-    echo Copied .env.desktop.example to dist\AIpolish\.env
+    echo [OK] Copied .env.desktop.example to dist\AIpolish\.env
 ) else (
     echo [INFO] No .env.desktop.example found. Create .env manually next to AIpolish.exe
 )
