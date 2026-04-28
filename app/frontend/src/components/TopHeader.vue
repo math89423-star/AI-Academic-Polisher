@@ -1,6 +1,6 @@
 <template>
   <div class="top-header">
-    <h2 class="system-title">AI 极速学术润色系统</h2>
+    <h2 class="system-title">AI Academic Polisher</h2>
     <div class="user-info">
       当前用户: <span style="font-weight: bold; color: #1e293b;">{{ username }}</span>
       <span v-if="userRole === 'admin'" class="role-badge">管理员</span>

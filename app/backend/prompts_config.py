@@ -16,13 +16,13 @@ def _load_prompt(filename: str) -> str:
 
 STRATEGIES = {
     "standard": {
-        "name": "⚖️ 标准平衡 (针对朱雀，知网)",
+        "name": "⚖️ 标准平衡",
         "color": "#334155",
         "zh_prompt_file": "cn_standard.md",
         "en_prompt_file": "en_standard.md",
     },
     "strict": {
-        "name": "⚡ 极致降重 (针对维普)",
+        "name": "⚡ 极致降重",
         "color": "#d97706",
         "zh_prompt_file": "cn_strict.md",
         "en_prompt_file": "en_strict.md",
