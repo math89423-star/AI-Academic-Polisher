@@ -3,11 +3,11 @@
     <div class="box-header">
       <h3>原始输入</h3>
       <div>
-        <label style="margin-right: 10px; cursor: pointer; font-size: 13px;">
-          <input type="radio" v-model="mode" value="zh"> 🇨🇳 中文润色
+        <label style="margin-right: 10px; font-size: 13px;" :style="{ cursor: isLocked ? 'not-allowed' : 'pointer', opacity: isLocked ? 0.6 : 1 }">
+          <input type="radio" v-model="mode" value="zh" :disabled="isLocked"> 🇨🇳 中文润色
         </label>
-        <label style="cursor: pointer; font-size: 13px;">
-          <input type="radio" v-model="mode" value="en"> 🇬🇧 英文润色
+        <label style="font-size: 13px;" :style="{ cursor: isLocked ? 'not-allowed' : 'pointer', opacity: isLocked ? 0.6 : 1 }">
+          <input type="radio" v-model="mode" value="en" :disabled="isLocked"> 🇬🇧 英文润色
         </label>
       </div>
     </div>
@@ -30,20 +30,21 @@
     </div>
 
     <div class="bottom-control-bar">
-      <div class="strategy-selector">
+      <div class="strategy-selector" :class="{ locked: isLocked }">
         <span>🤖 去AI化策略:</span>
         <span>
           <label
             v-for="(strategy, index) in strategies"
             :key="strategy.id"
-            style="margin-right: 15px; cursor: pointer;"
-            :style="{ color: strategy.color }"
+            style="margin-right: 15px;"
+            :style="{ color: strategy.color, cursor: isLocked ? 'not-allowed' : 'pointer', opacity: isLocked ? 0.6 : 1 }"
           >
             <input
               type="radio"
               v-model="selectedStrategy"
               :value="strategy.id"
               :checked="index === 0"
+              :disabled="isLocked"
             >
             {{ strategy.name }}
           </label>
@@ -80,11 +81,11 @@
         </button>
 
         <button
-          v-if="showCancel"
-          class="danger-btn"
+          v-if="showPause"
+          class="warn-btn"
           @click="$emit('cancel')"
         >
-          ⏹ 终止任务
+          ⏸ 暂停任务
         </button>
 
         <button
@@ -93,7 +94,23 @@
           style="background-color: #10b981;"
           @click="$emit('resume')"
         >
-          {{ currentTask?.status === 'completed' ? '🔄 重新润色' : '▶️ 继续执行' }}
+          ▶️ 继续执行
+        </button>
+
+        <button
+          v-if="showAbort"
+          class="danger-btn"
+          @click="handleAbort"
+        >
+          ✕ 取消任务
+        </button>
+
+        <button
+          v-if="showRepolish"
+          class="primary-btn"
+          @click="$emit('resume')"
+        >
+          🔄 重新润色
         </button>
       </div>
     </div>
@@ -128,12 +145,24 @@ const isFileTask = computed(() => {
   return props.currentTask && ['docx', 'pdf'].includes(props.currentTask.task_type)
 })
 
-const showCancel = computed(() => {
+const isLocked = computed(() => {
+  return props.currentTask && ['processing', 'queued', 'cancelled', 'failed'].includes(props.currentTask.status)
+})
+
+const showPause = computed(() => {
   return props.currentTask && ['processing', 'queued'].includes(props.currentTask.status)
 })
 
 const showResume = computed(() => {
-  return props.currentTask && ['cancelled', 'failed', 'completed'].includes(props.currentTask.status)
+  return props.currentTask && props.currentTask.status === 'cancelled'
+})
+
+const showAbort = computed(() => {
+  return props.currentTask && ['cancelled', 'failed'].includes(props.currentTask.status)
+})
+
+const showRepolish = computed(() => {
+  return props.currentTask && props.currentTask.status === 'completed'
 })
 
 watch(() => props.currentTask, (task) => {
@@ -142,10 +171,13 @@ watch(() => props.currentTask, (task) => {
   } else if (!task) {
     originalText.value = ''
   }
+  if (task?.strategy) {
+    selectedStrategy.value = task.strategy
+  }
 })
 
 watch(() => props.strategies, (strategies) => {
-  if (strategies.length > 0) {
+  if (strategies.length > 0 && !props.currentTask?.strategy) {
     selectedStrategy.value = strategies[0].id
   }
 })
@@ -217,6 +249,10 @@ const handleFileChange = async (event) => {
     isProcessing.value = false
     event.target.value = ''
   }
+}
+
+const handleAbort = () => {
+  taskStore.createNewTask()
 }
 </script>
 

@@ -53,7 +53,7 @@ class WorkerConfig:
 class SSEConfig:
     """SSE流式推送配置"""
     TIMEOUT = int(os.environ.get('SSE_TIMEOUT', 600))  # 10分钟
-    HEARTBEAT_INTERVAL = int(os.environ.get('SSE_HEARTBEAT', 30))  # 心跳间隔
+    HEARTBEAT_INTERVAL = int(os.environ.get('SSE_HEARTBEAT', 5))  # 心跳间隔
 
 
 class RedisConfig:

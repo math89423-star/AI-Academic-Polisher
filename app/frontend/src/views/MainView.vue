@@ -59,6 +59,14 @@ onMounted(async () => {
   await taskStore.loadHistory(props.username)
   await taskStore.loadStrategies(props.username)
   taskStore.startQueuePolling()
+
+  const activeTask = Object.values(taskStore.tasks).find(
+    t => t.status === 'processing' || t.status === 'queued'
+  )
+  if (activeTask) {
+    taskStore.switchTask(activeTask.id)
+    taskStore.startSSE(activeTask.id)
+  }
 })
 
 onUnmounted(() => {
@@ -72,7 +80,7 @@ const handleTaskCreated = (taskId) => {
 
 const handleCancel = async () => {
   if (taskStore.currentTaskId) {
-    await taskStore.cancelTask(taskStore.currentTaskId)
+    await taskStore.cancelTask(taskStore.currentTaskId, props.username)
   }
 }
 

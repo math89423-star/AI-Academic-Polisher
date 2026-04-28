@@ -71,9 +71,11 @@ export const taskAPI = {
     return res.json()
   },
 
-  async cancelTask(taskId) {
+  async cancelTask(taskId, username) {
     const res = await fetch(`${API_BASE}/tasks/${taskId}/cancel`, {
-      method: 'POST'
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username })
     })
     if (!res.ok) throw new Error('取消任务失败')
     return res.json()
@@ -156,13 +158,14 @@ export const taskAPI = {
           const res = await fetch(`${API_BASE}/tasks/${taskId}/detail`)
           if (res.ok) {
             const detail = await res.json()
-            if (detail.status === 'completed' || detail.status === 'failed' || detail.status === 'cancelled') {
+            if (detail.status === 'completed') {
               onMessage({
-                type: detail.status === 'completed' ? 'done' : 'fatal',
-                content: detail.status === 'completed'
-                  ? { download_url: detail.download_url || '' }
-                  : '任务已结束'
+                type: 'done',
+                content: { download_url: detail.download_url || '' }
               })
+              return
+            }
+            if (detail.status === 'cancelled' || detail.status === 'failed') {
               return
             }
           }

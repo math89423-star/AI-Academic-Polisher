@@ -33,6 +33,10 @@
       </div>
     </div>
     <div class="content-area">
+      <div v-if="isWaiting && !currentTask?.polished" class="loading-overlay">
+        <div class="spinner"></div>
+        <p class="loading-text">{{ loadingText }}</p>
+      </div>
       <div
         ref="resultBox"
         class="result-box"
@@ -61,6 +65,13 @@ let timerInterval = null
 const isWaiting = computed(() => {
   if (!props.currentTask) return false
   return ['queued', 'processing'].includes(props.currentTask.status)
+})
+
+const loadingText = computed(() => {
+  if (!props.currentTask) return ''
+  const isDoc = ['docx', 'pdf'].includes(props.currentTask.task_type)
+  if (props.currentTask.status === 'queued') return isDoc ? '文档排队中...' : '排队中...'
+  return isDoc ? '文档润色中，请耐心等待...' : 'AI 正在润色中...'
 })
 
 const elapsedText = computed(() => {
@@ -251,4 +262,35 @@ const generateDiff = (original, polished) => {
 
 .content-area { position: relative; }
 .char-count { position: absolute; bottom: 8px; right: 12px; font-size: 12px; color: #94a3b8; pointer-events: none; }
+
+.loading-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(250, 250, 250, 0.85);
+  z-index: 10;
+}
+
+.spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid #e2e8f0;
+  border-top-color: var(--primary-color, #6366f1);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.loading-text {
+  margin-top: 12px;
+  font-size: 13px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
 </style>

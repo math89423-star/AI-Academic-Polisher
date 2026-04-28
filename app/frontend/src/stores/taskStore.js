@@ -31,6 +31,7 @@ export const useTaskStore = defineStore('task', () => {
           original: t.original_text,
           polished: t.polished_text,
           status: t.status,
+          strategy: t.strategy || 'standard',
           serverInfo: '',
           task_type: t.task_type || 'text',
           downloadUrl: t.download_url || '',
@@ -71,6 +72,7 @@ export const useTaskStore = defineStore('task', () => {
       original: text,
       polished: '',
       status: 'queued',
+      strategy: strategy,
       serverInfo: '',
       task_type: 'text',
       downloadUrl: '',
@@ -91,6 +93,7 @@ export const useTaskStore = defineStore('task', () => {
       original: '',
       polished: '',
       status: 'queued',
+      strategy: strategy,
       serverInfo: '',
       task_type: taskType,
       downloadUrl: '',
@@ -130,8 +133,14 @@ export const useTaskStore = defineStore('task', () => {
       }
       sse.stop()
     } else if (data.type === 'error' || data.type === 'fatal') {
-      task.status = 'failed'
-      task.serverInfo = (typeof data.content === 'string' ? data.content : data.message) || '处理失败'
+      if (task.status !== 'cancelled') {
+        task.status = 'failed'
+        task.serverInfo = (typeof data.content === 'string' ? data.content : data.message) || '处理失败'
+      }
+      sse.stop()
+    } else if (data.type === 'cancelled') {
+      task.status = 'cancelled'
+      task.serverInfo = ''
       sse.stop()
     }
   }
@@ -142,8 +151,8 @@ export const useTaskStore = defineStore('task', () => {
       (data) => _handleSSEEvent(taskId, data),
       (err) => {
         const task = tasks.value[taskId]
-        if (task && task.status === 'processing') {
-          task.serverInfo = '连接中断'
+        if (task && !['cancelled', 'failed', 'completed'].includes(task.status)) {
+          task.serverInfo = '连接中断，正在重试...'
         }
       }
     )
@@ -153,13 +162,14 @@ export const useTaskStore = defineStore('task', () => {
     sse.stop()
   }
 
-  async function cancelTask(taskId) {
-    await taskAPI.cancelTask(taskId)
+  async function cancelTask(taskId, username) {
+    stopSSE()
+    await taskAPI.cancelTask(taskId, username)
     const task = tasks.value[taskId]
     if (task) {
       task.status = 'cancelled'
+      task.serverInfo = ''
     }
-    stopSSE()
   }
 
   async function resumeTask(taskId, username) {

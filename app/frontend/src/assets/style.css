@@ -292,6 +292,18 @@ textarea {
     transition: all 0.2s;
 }
 .danger-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(239,68,68,0.3); }
+.warn-btn {
+    padding: 8px 20px;
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+.warn-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(245,158,11,0.3); }
 
 /* 状态标签 */
 .status-badge { font-size: 12px; padding: 4px 10px; border-radius: 12px; margin-left: 10px; background: #e2e8f0; color: #475569; }

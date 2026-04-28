@@ -253,6 +253,7 @@ class TaskService:
                 "original_text": t.original_text,
                 "polished_text": t.polished_text or "",
                 "status": t.status,
+                "strategy": getattr(t, 'strategy', 'standard'),
                 "task_type": getattr(t, 'task_type', 'text'),
                 "download_url": f"/api/tasks/download/{t.id}" if getattr(t, 'task_type', 'text') in ('docx', 'pdf') and t.status == 'completed' else "",
                 "created_at": t.created_at.strftime("%Y-%m-%d %H:%M:%S") if t.created_at else ""

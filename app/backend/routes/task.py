@@ -147,6 +147,29 @@ def stream_results(task_id):
                     err_payload = json.dumps({'type': 'fatal', 'content': '任务处理失败'})
                     yield f"data: {err_payload}\n\n"
                     return
+                if task and task.status == 'cancelled':
+                    cancel_payload = json.dumps({'type': 'cancelled', 'content': '任务已暂停'})
+                    yield f"data: {cancel_payload}\n\n"
+                    return
+
+                # 恢复长文本处理进度
+                if task and task.status == 'processing':
+                    from backend.utils.helpers import split_text_into_chunks
+                    from backend.config import WorkerConfig
+                    chunks = split_text_into_chunks(task.original_text or '', max_chars=WorkerConfig.TEXT_CHUNK_SIZE)
+                    total = len(chunks)
+                    if total > 1:
+                        progress_key = RedisKeyManager.progress_key(task_id)
+                        done_count = redis_client.hlen(progress_key)
+                        if done_count > 0:
+                            pct = int((done_count / total) * 100)
+                            progress_payload = json.dumps({'type': 'progress', 'content': pct})
+                            yield f"data: {progress_payload}\n\n"
+                            block_payload = json.dumps({
+                                'type': 'block',
+                                'content': f'⚡ [并发加速] 第 {done_count}/{total} 个片段完成...\n'
+                            })
+                            yield f"data: {block_payload}\n\n"
 
                 last_message_time = time.time()
                 last_db_check = time.time()
@@ -189,6 +212,10 @@ def stream_results(task_id):
                                 err_payload = json.dumps({'type': 'fatal', 'content': '任务处理失败'})
                                 yield f"data: {err_payload}\n\n"
                                 break
+                            elif task and task.status == 'cancelled':
+                                cancel_payload = json.dumps({'type': 'cancelled', 'content': '任务已暂停'})
+                                yield f"data: {cancel_payload}\n\n"
+                                break
 
                         yield ": heartbeat\n\n"
 
@@ -212,6 +239,7 @@ def get_task_detail(task_id: int):
         "original_text": task.original_text,
         "polished_text": task.polished_text or "",
         "status": task.status,
+        "strategy": getattr(task, 'strategy', 'standard'),
         "task_type": getattr(task, 'task_type', 'text'),
         "download_url": f"/api/tasks/download/{task.id}" if getattr(task, 'task_type', 'text') in ('docx', 'pdf') and task.status == 'completed' else "",
         "created_at": task.created_at.strftime("%Y-%m-%d %H:%M:%S") if task.created_at else ""
