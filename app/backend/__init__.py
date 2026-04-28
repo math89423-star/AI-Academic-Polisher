@@ -16,10 +16,16 @@ def create_app(config_class: Type[Any] = Config) -> Flask:
     """
     # 获取项目根目录 (backend 的上一级)
     base_dir = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
-    frontend_dir = os.path.join(base_dir, 'frontend')
+
+    # Desktop 模式：static_folder 指向前端构建产物
+    # Server 模式：static_folder 指向源码目录（nginx 负责服务）
+    if Config.DEPLOY_MODE == 'desktop':
+        static_folder = os.path.join(base_dir, 'frontend', 'dist')
+    else:
+        static_folder = os.path.join(base_dir, 'frontend')
 
     # 将 Flask 的 static_folder 指向外部的 frontend 目录
-    app = Flask(__name__, static_folder=frontend_dir)
+    app = Flask(__name__, static_folder=static_folder)
     
     # 导入配置
     app.config.from_object(config_class)
@@ -70,5 +76,25 @@ def create_app(config_class: Type[Any] = Config) -> Flask:
     def serve_upload(filename):
         from flask import send_from_directory
         return send_from_directory(upload_dir, filename)
+
+    # Desktop 模式：Flask 直接服务前端（无 nginx）
+    if Config.DEPLOY_MODE == 'desktop':
+        dist_dir = os.path.join(base_dir, 'frontend', 'dist')
+
+        @app.route('/')
+        def serve_index():
+            from flask import send_from_directory
+            return send_from_directory(dist_dir, 'index.html')
+
+        @app.route('/admin')
+        @app.route('/admin/')
+        def serve_admin():
+            from flask import send_from_directory
+            return send_from_directory(os.path.join(dist_dir, 'admin'), 'index.html')
+
+        @app.route('/assets/<path:filename>')
+        def serve_assets(filename):
+            from flask import send_from_directory
+            return send_from_directory(os.path.join(dist_dir, 'assets'), filename)
 
     return app
